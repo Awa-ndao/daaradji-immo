@@ -1,0 +1,213 @@
+.layout {
+  min-height: 100vh;
+  background: #F4F5F1;
+  color: #17231C;
+  font-family: 'Figtree', 'Segoe UI', sans-serif;
+}
+
+/* ---------- Contenu ---------- */
+.main-content {
+  min-height: 100vh;
+  margin-left: 68px;
+  padding: 80px 28px 20px; /* 60px de barre du haut + 20px */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Bandeau de bienvenue ---------- */
+.welcome-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 30px 28px;
+  border-radius: 16px;
+  text-align: center;
+  background:
+    radial-gradient(90% 140% at 0% 100%, #0F6B3A 0%, transparent 60%),
+    linear-gradient(120deg, #0B4D2A 0%, #083D21 100%);
+}
+
+.welcome-text {
+  position: relative;
+  margin: 0;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: clamp(1.2rem, 2.1vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.text-gold { color: #F2CC5B; }
+
+.banner-roof {
+  position: absolute;
+  right: 24px;
+  bottom: -34px;
+  height: 150px;
+  overflow: visible;
+  opacity: .55;
+  pointer-events: none;
+}
+
+.banner-roof path {
+  stroke: #D4A017;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.banner-roof rect { fill: #D4A017; }
+
+/* ---------- Cartes statistiques ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid #E3E4DC;
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.stat-card:hover {
+  border-color: #D4A017;
+  box-shadow: 0 6px 16px -8px rgba(11, 77, 42, .35);
+}
+
+.stat-card:focus-visible {
+  outline: 3px solid #D4A017;
+  outline-offset: 2px;
+}
+
+.stat-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+}
+
+.stat-icon.green { background: #E8F2EB; color: #0F6B3A; }
+.stat-icon.gold  { background: #FBF3DC; color: #9A7205; }
+
+.stat-info { display: block; min-width: 0; }
+
+.stat-value {
+  display: block;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12.5px;
+  color: #5F6B64;
+}
+
+/* ---------- Activités + rendez-vous ---------- */
+.panels {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 220px;
+}
+
+.content-card {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px;
+  border: 1px solid #E3E4DC;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.card-title {
+  margin: 0 0 12px;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #5F6B64;
+}
+
+.empty-state i { font-size: 26px; color: #B9C6BD; }
+.empty-state p { margin: 0; }
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #EEEFE9;
+}
+
+.activity-item:last-child { border-bottom: 0; }
+
+.activity-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #E8F2EB;
+  color: #0F6B3A;
+  font-size: 16px;
+}
+
+.activity-main { flex: 1; min-width: 0; }
+
+.item-title { font-size: 13.5px; font-weight: 600; }
+.item-sub   { font-size: 12px; color: #5F6B64; }
+.item-date  { font-size: 12.5px; color: #5F6B64; }
+
+.rdv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid #D4A017;
+  border-radius: 8px;
+  background: #F4F5F1;
+}
+
+.rdv-time {
+  min-width: 45px;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #0B4D2A;
+}
+
+/* ---------- Petits écrans ---------- */
+@media (max-width: 900px) {
+  .stats  { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panels { grid-template-columns: 1fr; }
+  .banner-roof { display: none; }
+}

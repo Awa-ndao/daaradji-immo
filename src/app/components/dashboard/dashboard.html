@@ -1,0 +1,88 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau de bienvenue -->
+    <section class="welcome-banner">
+      <svg class="banner-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <h1 class="welcome-text">
+        Bienvenue <span class="text-gold">{{ prenom }}</span> sur votre espace de travail
+      </h1>
+    </section>
+
+    <!-- Cartes statistiques -->
+    <section class="stats">
+      <button type="button" class="stat-card" (click)="goTo('/biens')">
+        <span class="stat-icon green"><i class="bi bi-house-door"></i></span>
+        <span class="stat-info">
+          <span class="stat-value">{{ stats?.biens_disponibles || 0 }}</span>
+          <span class="stat-label">Biens disponibles</span>
+        </span>
+      </button>
+      <button type="button" class="stat-card" (click)="goTo('/ventes')">
+        <span class="stat-icon gold"><i class="bi bi-tag"></i></span>
+        <span class="stat-info">
+          <span class="stat-value">{{ stats?.ventes_ce_mois || 0 }}</span>
+          <span class="stat-label">Ventes ce mois</span>
+        </span>
+      </button>
+      <button type="button" class="stat-card" (click)="goTo('/locations')">
+        <span class="stat-icon green"><i class="bi bi-key"></i></span>
+        <span class="stat-info">
+          <span class="stat-value">{{ stats?.locations_actives || 0 }}</span>
+          <span class="stat-label">Locations actives</span>
+        </span>
+      </button>
+      <button type="button" class="stat-card" (click)="goTo('/constructions')">
+        <span class="stat-icon gold"><i class="bi bi-building"></i></span>
+        <span class="stat-info">
+          <span class="stat-value">{{ stats?.chantiers_en_cours || 0 }}</span>
+          <span class="stat-label">Chantiers en cours</span>
+        </span>
+      </button>
+    </section>
+
+    <!-- Activités + rendez-vous -->
+    <section class="panels">
+      <div class="content-card">
+        <h2 class="card-title">Activités récentes</h2>
+        <div *ngIf="activites.length === 0" class="empty-state">
+          <i class="bi bi-clock-history"></i>
+          <p>Aucune activité récente</p>
+        </div>
+        <div *ngFor="let a of activites" class="activity-item">
+          <div class="activity-icon"><i class="bi bi-tag"></i></div>
+          <div class="activity-main">
+            <div class="item-title">Vente — {{ a.bien?.localisation }}</div>
+            <div class="item-sub">{{ a.client?.nom }} {{ a.client?.prenom }}</div>
+          </div>
+          <div class="item-date">{{ a.created_at | date:'dd/MM/yyyy' }}</div>
+        </div>
+      </div>
+
+      <div class="content-card">
+        <h2 class="card-title">Rendez-vous du jour</h2>
+        <div *ngIf="rdvAujourdhui.length === 0" class="empty-state">
+          <i class="bi bi-calendar-x"></i>
+          <p>Aucun rendez-vous aujourd'hui</p>
+        </div>
+        <div *ngFor="let r of rdvAujourdhui" class="rdv-item">
+          <div class="rdv-time">{{ r.date_heure | date:'HH:mm' }}</div>
+          <div>
+            <div class="item-title">{{ r.client?.nom }} {{ r.client?.prenom }}</div>
+            <div class="item-sub">{{ r.objet }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>

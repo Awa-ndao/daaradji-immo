@@ -1,0 +1,66 @@
+<!-- Barre du haut : date et utilisateur connecté, visibles sur toutes les pages -->
+<header class="top-header">
+  <span class="header-date">
+    <i class="bi bi-calendar3"></i>
+    <span class="header-date-text">{{ today | date:"EEEE d MMMM yyyy":"":"fr" }}</span>
+  </span>
+  <div class="header-user">
+    <div>
+      <div class="user-name">{{ user?.name }}</div>
+      <div class="user-role">Propriétaire</div>
+    </div>
+    <div class="user-avatar">{{ initiales }}</div>
+  </div>
+</header>
+
+<!-- Logo : posé en haut à gauche, sur la barre blanche -->
+<a class="brand-logo" routerLink="/dashboard" aria-label="DAARADJI IMMO, retour au tableau de bord">
+  <img src="/images/logo.png" alt="DAARADJI IMMO">
+</a>
+
+<!-- Barre d'icônes -->
+<aside class="sidebar">
+  <nav class="sidebar-nav">
+    <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" aria-label="Tableau de bord">
+      <i class="bi bi-speedometer2"></i><span class="nav-tip">Tableau de bord</span>
+    </a>
+    <a routerLink="/biens" routerLinkActive="active" class="nav-item" aria-label="Biens">
+      <i class="bi bi-house-door"></i><span class="nav-tip">Biens</span>
+    </a>
+    <a routerLink="/achats" routerLinkActive="active" class="nav-item" aria-label="Achats">
+      <i class="bi bi-cart3"></i><span class="nav-tip">Achats</span>
+    </a>
+    <a routerLink="/clients" routerLinkActive="active" class="nav-item" aria-label="Clients">
+      <i class="bi bi-people"></i><span class="nav-tip">Clients</span>
+    </a>
+    <a routerLink="/ventes" routerLinkActive="active" class="nav-item" aria-label="Ventes">
+      <i class="bi bi-tag"></i><span class="nav-tip">Ventes</span>
+    </a>
+    <a routerLink="/locations" routerLinkActive="active" class="nav-item" aria-label="Locations">
+      <i class="bi bi-key"></i><span class="nav-tip">Locations</span>
+    </a>
+    <a routerLink="/constructions" routerLinkActive="active" class="nav-item" aria-label="Constructions">
+      <i class="bi bi-building"></i><span class="nav-tip">Constructions</span>
+    </a>
+    <a routerLink="/rendez-vous" routerLinkActive="active" class="nav-item" aria-label="Rendez-vous">
+      <i class="bi bi-calendar-check"></i><span class="nav-tip">Rendez-vous</span>
+    </a>
+    <a routerLink="/contrats" routerLinkActive="active" class="nav-item" aria-label="Contrats">
+      <i class="bi bi-file-earmark-text"></i><span class="nav-tip">Contrats</span>
+    </a>
+    <a routerLink="/factures" routerLinkActive="active" class="nav-item" aria-label="Factures">
+      <i class="bi bi-receipt"></i><span class="nav-tip">Factures</span>
+    </a>
+    <a routerLink="/paiements" routerLinkActive="active" class="nav-item" aria-label="Paiements">
+      <i class="bi bi-cash-coin"></i><span class="nav-tip">Paiements</span>
+    </a>
+    <a routerLink="/utilisateurs" routerLinkActive="active" class="nav-item" aria-label="Utilisateurs">
+      <i class="bi bi-person-gear"></i><span class="nav-tip">Utilisateurs</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="nav-item logout-btn" type="button" (click)="logout()" aria-label="Déconnexion">
+      <i class="bi bi-box-arrow-left"></i><span class="nav-tip">Déconnexion</span>
+    </button>
+  </div>
+</aside>

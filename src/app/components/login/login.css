@@ -1,0 +1,354 @@
+:host {
+  --vert-nuit: #083D21;
+  --vert: #0B4D2A;
+  --vert-clair: #0F6B3A;
+  --or: #D4A017;
+  --or-clair: #F2CC5B;
+  --papier: #FBFAF6;
+  --encre: #17231C;
+  --gris: #5F6B64;
+  --trait: #DAD9D0;
+  --rouge: #B3261E;
+
+  --titre: 'Outfit', 'Segoe UI', sans-serif;
+  --texte: 'Figtree', 'Segoe UI', sans-serif;
+
+  display: block;
+  font-family: var(--texte);
+  color: var(--encre);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.login {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 80% at 0% 100%, var(--vert-clair) 0%, transparent 60%),
+    linear-gradient(160deg, var(--vert) 0%, var(--vert-nuit) 100%);
+}
+
+/* ---------- Panneau marque ---------- */
+
+.brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 40px;
+  padding: clamp(24px, 6vh, 56px) clamp(28px, 4.5vw, 64px);
+  color: #fff;
+  /* le trait du toit s'arrête sous le formulaire et ne ressort pas à droite */
+  clip-path: inset(0 -23vw 0 0);
+}
+
+.roof {
+  position: absolute;
+  top: 0;
+  left: -4%;
+  width: min(150%, 112vh); /* ne dépasse jamais la moitié haute de l'écran */
+  height: auto;
+  overflow: visible; /* la ligne du toit file jusque derrière le formulaire */
+  pointer-events: none;
+}
+
+.roof__line {
+  stroke: var(--or);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tracer 7s cubic-bezier(.6, 0, .2, 1) infinite;
+}
+
+.roof__line--second {
+  stroke: var(--or-clair);
+  animation-name: tracer-second;
+}
+
+.roof__window rect {
+  fill: var(--or);
+  opacity: 0;
+  animation: allumer 7s ease-out infinite;
+}
+
+/* Boucle : le toit se trace, reste affiché, s'efface, puis recommence */
+@keyframes tracer {
+  0%        { stroke-dashoffset: 1; }
+  26%, 78%  { stroke-dashoffset: 0; }
+  100%      { stroke-dashoffset: -1; }
+}
+@keyframes tracer-second {
+  0%, 14%   { stroke-dashoffset: 1; }
+  36%, 80%  { stroke-dashoffset: 0; }
+  100%      { stroke-dashoffset: -1; }
+}
+@keyframes allumer {
+  0%, 36%   { opacity: 0; }
+  44%, 80%  { opacity: 1; }
+  92%, 100% { opacity: 0; }
+}
+
+.brand__text {
+  position: relative;
+  max-width: 38rem;
+}
+
+.brand__title {
+  margin: 0 0 16px;
+  font-family: var(--titre);
+  font-weight: 600;
+  font-size: clamp(1.7rem, min(3.9vw, 6.4vh), 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.brand__name {
+  color: var(--or-clair);
+  white-space: nowrap;
+}
+
+.brand__lead {
+  max-width: 30rem;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #CFE3D6;
+}
+
+.brand__services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 0;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--titre);
+  font-weight: 500;
+  font-size: .98rem;
+}
+
+.brand__services li {
+  padding: 0 18px;
+  border-left: 2px solid var(--or);
+}
+
+.brand__services li:first-child { padding-left: 14px; }
+
+.brand__address {
+  position: relative;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, .18);
+  font-size: .9rem;
+  color: #A9C7B4;
+}
+
+/* ---------- Panneau connexion ---------- */
+
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: clamp(16px, 4vh, 48px) 32px;
+}
+
+.panel__inner {
+  width: 100%;
+  max-width: 500px;
+  min-height: min(84vh, 680px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(22px, 4.6vh, 48px) clamp(28px, 3.4vw, 48px);
+  border-radius: 20px;
+  border-top: 5px solid var(--or);
+  background: #fff;
+  box-shadow: 0 30px 60px -20px rgba(3, 26, 14, .55);
+}
+
+.panel__logo {
+  display: block;
+  width: clamp(170px, 30vh, 260px);
+  max-width: 75%;
+  aspect-ratio: 1699 / 470;
+  object-fit: cover;
+  object-position: center 37%;
+  margin: 0 auto clamp(12px, 2.6vh, 26px);
+  mix-blend-mode: multiply; /* fait disparaître le fond blanc du PNG sur le fond crème */
+}
+
+.panel__title {
+  margin: 0 0 6px;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 4.4vh, 2.1rem);
+  letter-spacing: -0.01em;
+  color: var(--vert);
+}
+
+.panel__lead {
+  margin: 0 0 clamp(14px, 3.4vh, 30px);
+  line-height: 1.5;
+  color: var(--gris);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2.4vh, 20px);
+}
+
+.form__error {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--rouge);
+  background: #FCEEEC;
+  color: var(--rouge);
+  font-size: .92rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field__label {
+  font-weight: 600;
+  font-size: .92rem;
+}
+
+.field__group {
+  position: relative;
+  display: block;
+}
+
+.field__input {
+  width: 100%;
+  height: clamp(42px, 7.2vh, 52px);
+  padding: 0 16px;
+  border: 1.5px solid var(--trait);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  color: var(--encre);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.field__group .field__input { padding-right: 52px; }
+
+.field__input::placeholder { color: #9AA39D; }
+
+.field__input:hover { border-color: #B9B8AD; }
+
+.field__input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: var(--encre);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--vert-clair);
+  box-shadow: 0 0 0 4px rgba(15, 107, 58, .14);
+}
+
+.field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--vert-clair);
+  cursor: pointer;
+}
+
+.field__toggle:hover { background: #EEF4EF; }
+
+.form__forgot {
+  align-self: flex-end;
+  margin-top: -8px;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--vert-clair);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.form__forgot:hover { color: var(--vert-nuit); }
+
+.form__submit {
+  height: clamp(42px, 7vh, 48px);
+  margin-top: 4px;
+  border: 0;
+  border-bottom: 3px solid var(--or);
+  border-radius: 10px;
+  background: var(--vert);
+  font-family: var(--titre);
+  font-weight: 600;
+  font-size: .98rem;
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+
+.form__submit:hover  { background: var(--vert-nuit); }
+.form__submit:active { transform: translateY(1px); }
+.form__submit:disabled { opacity: .65; cursor: progress; }
+
+.field__toggle:focus-visible,
+.form__forgot:focus-visible,
+.form__submit:focus-visible {
+  outline: 3px solid var(--or);
+  outline-offset: 2px;
+}
+
+.panel__footer {
+  margin: 36px 0 0;
+  font-size: .82rem;
+  color: var(--gris);
+}
+
+/* ---------- Écrans peu hauts : on allège la gauche ---------- */
+
+@media (max-height: 640px) {
+  .brand { gap: 20px; }
+  .brand__lead { margin-bottom: 0; font-size: .95rem; }
+  .brand__services { margin-top: 16px; font-size: .9rem; }
+}
+
+/* ---------- Petits écrans ---------- */
+
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+
+  .brand {
+    min-height: 240px;
+    padding: 32px 24px 24px;
+    gap: 20px;
+  }
+
+  .brand { clip-path: none; }
+  .roof { top: -8%; width: 112%; opacity: .55; }
+  .brand__lead, .brand__services, .brand__address { display: none; }
+  .brand__title { margin: 0; font-size: 1.6rem; }
+  .panel { padding: 0 16px 40px; }
+  .panel__inner { padding: 32px 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roof__line, .roof__line--second { animation: none; stroke-dashoffset: 0; }
+  .roof__window rect { animation: none; opacity: 1; }
+}

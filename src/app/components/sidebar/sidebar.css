@@ -1,0 +1,208 @@
+/* ---------- Barre du haut ---------- */
+.top-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+  padding: 0 28px 0 200px; /* 200px : la place du logo à gauche */
+  background: #fff;
+  border-bottom: 1px solid #E3E4DC;
+  font-family: 'Figtree', 'Segoe UI', sans-serif;
+  color: #17231C;
+}
+
+.header-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #5F6B64;
+}
+
+.header-date-text { display: inline-block; }
+.header-date-text::first-letter { text-transform: uppercase; }
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.user-role {
+  font-size: 12px;
+  color: #5F6B64;
+  text-align: right;
+}
+
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #0B4D2A;
+  color: #F2CC5B;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Logo en haut à gauche (au-dessus des icônes, sur la barre blanche) */
+.brand-logo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  height: 60px;
+  padding-left: 14px;
+}
+
+.brand-logo img {
+  display: block;
+  width: 160px;
+  aspect-ratio: 1699 / 470;   /* rogne le vide blanc autour du logo */
+  object-fit: cover;
+  object-position: center 37%;
+}
+
+/* Barre d'icônes : fond blanc, icônes vertes */
+.sidebar {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  bottom: 0;
+  z-index: 1000;
+  width: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 10px;
+  background: #fff;
+  border-right: 1px solid #E3E4DC;
+  font-family: 'Figtree', 'Segoe UI', sans-serif;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.nav-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  /* la hauteur s'adapte pour que les 12 modules tiennent sans défilement */
+  height: clamp(28px, calc((100vh - 150px) / 12), 40px);
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #0F6B3A;
+  font-size: 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+/* Survol : icône sur fond doré */
+.nav-item:hover,
+.nav-item:focus-visible {
+  background: #D4A017;
+  color: #083D21;
+  outline: none;
+}
+
+/* Module ouvert : fond vert clair + trait doré */
+.nav-item.active {
+  background: #E8F2EB;
+  color: #0B4D2A;
+}
+
+.nav-item.active:hover {
+  background: #D4A017;
+  color: #083D21;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: #D4A017;
+}
+
+/* Étiquette verte qui apparaît au survol */
+.nav-tip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translate(-4px, -50%);
+  padding: 7px 14px;
+  border-left: 3px solid #D4A017;
+  border-radius: 8px;
+  background: #0B4D2A;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -6px rgba(3, 26, 14, .5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, transform .15s;
+}
+
+.nav-item:hover .nav-tip,
+.nav-item:focus-visible .nav-tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.sidebar-footer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding-top: 6px;
+}
+
+.logout-btn { color: #B3261E; }
+
+.logout-btn:hover,
+.logout-btn:focus-visible {
+  background: #FCEEEC;
+  color: #B3261E;
+}
+
+.logout-btn .nav-tip {
+  border-left-color: #B3261E;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item, .nav-tip { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .header-date { display: none; }
+}
