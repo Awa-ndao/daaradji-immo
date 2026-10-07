@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ApiService } from '../../services/api';
@@ -19,7 +19,12 @@ export class DashboardComponent implements OnInit {
   user: any;
   prenom = '';
 
-  constructor(private api: ApiService, private auth: AuthService, private router: Router) {}
+  constructor(
+    private api: ApiService,
+    private auth: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     this.user = this.auth.getUser();
@@ -32,11 +37,17 @@ export class DashboardComponent implements OnInit {
   loadDashboard(): void {
     this.api.get('dashboard').subscribe({
       next: (data: any) => {
+        console.log('Réponse du tableau de bord :', data);
         this.stats = data.stats || {};
         this.activites = data.activites_recentes || [];
         this.rdvAujourdhui = data.rdv_aujourd_hui || [];
+        // Rafraîchit l'écran dès que les chiffres arrivent du serveur
+        this.cdr.detectChanges();
       },
-      error: (err) => console.error(err)
+      error: (err) => {
+        console.error('Tableau de bord :', err);
+        this.cdr.detectChanges();
+      }
     });
   }
 

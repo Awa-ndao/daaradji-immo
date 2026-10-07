@@ -1,1 +1,315 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">🏠 Gestion des Biens</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Biens</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Ajouter un bien
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche + filtres -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher une référence, une localisation…" autocomplete="off"
+          aria-label="Rechercher un bien"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+
+      <!-- Statut : onglets -->
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (s of statutTabs; track s.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterStatut === s.value"
+            [attr.aria-pressed]="filterStatut === s.value"
+            (click)="setStatut(s.value)">{{ s.label }}</button>
+        }
+      </div>
+
+      <!-- Type : menu déroulant aux couleurs de l'agence -->
+      <div class="dd">
+        <button type="button" class="dd__btn" [class.dd__btn--open]="typeMenuOpen"
+          aria-haspopup="listbox" [attr.aria-expanded]="typeMenuOpen"
+          (click)="toggleTypeMenu()">
+          <span>{{ filterType ? typeLabel(filterType) : 'Tous les types' }}</span>
+          <i class="bi" [class.bi-chevron-up]="typeMenuOpen" [class.bi-chevron-down]="!typeMenuOpen"></i>
+        </button>
+        @if (typeMenuOpen) {
+          <div class="dd__veil" (click)="toggleTypeMenu(false)"></div>
+          <div class="dd__menu" role="listbox">
+            <button type="button" class="dd__opt" role="option"
+              [class.dd__opt--sel]="filterType === ''"
+              [attr.aria-selected]="filterType === ''"
+              (click)="setType('')">
+              Tous les types
+              @if (filterType === '') { <i class="bi bi-check2"></i> }
+            </button>
+            @for (t of types; track t.value) {
+              <button type="button" class="dd__opt" role="option"
+                [class.dd__opt--sel]="filterType === t.value"
+                [attr.aria-selected]="filterType === t.value"
+                (click)="setType(t.value)">
+                {{ t.label }}
+                @if (filterType === t.value) { <i class="bi bi-check2"></i> }
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="biens-table">
+          <thead>
+            <tr>
+              <th>Référence</th>
+              <th>Type</th>
+              <th>Localisation</th>
+              <th class="num">Superficie</th>
+              <th class="num">Prix</th>
+              <th>Propriété</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="8" class="empty">Chargement des biens…</td></tr>
+            } @else if (biens.length === 0) {
+              <tr>
+                <td colspan="8" class="empty">
+                  <i class="bi bi-house-slash"></i>
+                  Aucun bien ne correspond à ces critères.
+                </td>
+              </tr>
+            }
+            @for (b of biens; track b.id) {
+              <tr>
+                <td class="ref">{{ b.reference }}</td>
+                <td>
+                  <span class="type"><span class="type__ic"><i class="bi" [ngClass]="typeIcon(b.type)"></i></span>{{ typeLabel(b.type) }}</span>
+                </td>
+                <td class="loc"><i class="bi bi-geo-alt"></i> {{ b.localisation }}</td>
+                <td class="num">
+                  @if (b.superficie) { {{ nombre(b.superficie) }} m² } @else { — }
+                </td>
+                <td class="num price">{{ nombre(b.prix) }}<small>FCFA</small></td>
+                <td>
+                  @if (b.type_propriete === 'propre') {
+                    <span class="own own--a"><i class="bi bi-patch-check"></i>Propre</span>
+                  } @else {
+                    <span class="own own--m"><i class="bi bi-person-vcard"></i>Confié</span>
+                  }
+                </td>
+                <td><span class="st" [ngClass]="'st--' + b.statut">{{ statutLabel(b.statut) }}</span></td>
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="editBien(b)"
+                      [attr.aria-label]="'Modifier le bien ' + b.reference" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="askDelete(b)"
+                      [attr.aria-label]="'Supprimer le bien ' + b.reference" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bien-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveBien()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="bien-form-title">
+              {{ editingId ? 'Modifier le bien' : 'Nouveau bien' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <div>
+            <label class="lab" for="bien-reference">Référence <em>*</em></label>
+            <div class="inp">
+              <input id="bien-reference" autocomplete="off" type="text" placeholder="B-006"
+                [(ngModel)]="form.reference" name="reference" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="bien-localisation">Localisation <em>*</em></label>
+            <div class="inp">
+              <input id="bien-localisation" autocomplete="off" type="text" placeholder="Quartier, ville"
+                [(ngModel)]="form.localisation" name="localisation" required>
+            </div>
+          </div>
+
+          <div class="full">
+            <span class="lab" id="bien-type-label">Type de bien <em>*</em></span>
+            <div class="chips" role="group" aria-labelledby="bien-type-label">
+              @for (t of types; track t.value) {
+                <button type="button" class="chip"
+                  [class.chip--on]="form.type === t.value"
+                  [attr.aria-pressed]="form.type === t.value"
+                  (click)="choose('type', t.value)">
+                  <i class="bi" [ngClass]="t.icon"></i>{{ t.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="bien-superficie">Superficie</label>
+            <div class="inp">
+              <input id="bien-superficie" autocomplete="off" type="number" min="0" placeholder="0"
+                [(ngModel)]="form.superficie" name="superficie">
+              <span>m²</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="bien-prix">Prix <em>*</em></label>
+            <div class="inp">
+              <input id="bien-prix" autocomplete="off" type="number" min="0" placeholder="0"
+                [(ngModel)]="form.prix" name="prix" required>
+              <span>FCFA</span>
+            </div>
+          </div>
+
+          <div>
+            <span class="lab" id="bien-propriete-label">Propriété <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="bien-propriete-label">
+              <button type="button" [class.on]="form.type_propriete === 'propre'"
+                [attr.aria-pressed]="form.type_propriete === 'propre'"
+                (click)="choose('type_propriete', 'propre')">
+                <i class="bi bi-patch-check"></i>Propre (agence)
+              </button>
+              <button type="button" [class.on]="form.type_propriete === 'confie'"
+                [attr.aria-pressed]="form.type_propriete === 'confie'"
+                (click)="choose('type_propriete', 'confie')">
+                <i class="bi bi-person-vcard"></i>Confié (mandat)
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <span class="lab" id="bien-statut-label">Statut</span>
+            <div class="seg" role="group" aria-labelledby="bien-statut-label">
+              @for (s of statuts; track s.value) {
+                <button type="button" [class.on]="form.statut === s.value"
+                  [attr.aria-pressed]="form.statut === s.value"
+                  (click)="choose('statut', s.value)">{{ s.label }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="bien-description">Description</label>
+            <div class="inp inp--area">
+              <textarea id="bien-description" rows="2"
+                placeholder="Nombre de pièces, état, particularités…"
+                [(ngModel)]="form.description" name="description"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer le bien') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation de suppression (remplace la boîte grise du navigateur) -->
+@if (bienToDelete) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="confirm-title">Supprimer le bien {{ bienToDelete.reference }} ?</h2>
+      <p class="confirm__text" id="confirm-text">
+        {{ typeLabel(bienToDelete.type) }} à {{ bienToDelete.localisation }}.
+        Cette suppression est définitive.
+      </p>
+      @if (deleteError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ deleteError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting">
+          <i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
