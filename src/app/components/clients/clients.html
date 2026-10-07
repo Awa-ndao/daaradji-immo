@@ -1,1 +1,258 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">👥 Gestion des Clients</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Clients</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Ajouter un client
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un nom, un téléphone, un e-mail…"
+          aria-label="Rechercher un client" autocomplete="off"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Téléphone</th>
+              <th>E-mail</th>
+              <th>Adresse</th>
+              <th>Pièce d'identité</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="6" class="empty">Chargement des clients…</td></tr>
+            } @else if (clients.length === 0) {
+              <tr>
+                <td colspan="6" class="empty">
+                  <i class="bi bi-people"></i>
+                  Aucun client ne correspond à cette recherche.
+                </td>
+              </tr>
+            }
+            @for (c of clients; track c.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initials(c) }}</span>
+                    <span class="who__name">{{ c.nom }} {{ c.prenom }}</span>
+                  </span>
+                </td>
+                <td class="tel"><i class="bi bi-telephone"></i> {{ c.telephone }}</td>
+                <td class="soft">{{ c.email || '—' }}</td>
+                <td class="soft">
+                  @if (c.adresse) { <i class="bi bi-geo-alt"></i> {{ c.adresse }} } @else { — }
+                </td>
+                <td>
+                  @if (c.piece_identite) {
+                    <span class="piece">
+                      <i class="bi bi-person-vcard"></i>
+                      <b>{{ pieceLabel(c.piece_identite) }}</b>
+                      @if (c.numero_piece) { <span>{{ c.numero_piece }}</span> }
+                    </span>
+                  } @else {
+                    <span class="soft">—</span>
+                  }
+                </td>
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="editClient(c)"
+                      [attr.aria-label]="'Modifier le client ' + c.nom + ' ' + c.prenom" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="askDelete(c)"
+                      [attr.aria-label]="'Supprimer le client ' + c.nom + ' ' + c.prenom" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="client-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveClient()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="client-form-title">
+              {{ editingId ? 'Modifier le client' : 'Nouveau client' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <div>
+            <label class="lab" for="client-nom">Nom <em>*</em></label>
+            <div class="inp">
+              <input id="client-nom" autocomplete="off" type="text"
+                [(ngModel)]="form.nom" name="nom" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="client-prenom">Prénom <em>*</em></label>
+            <div class="inp">
+              <input id="client-prenom" autocomplete="off" type="text"
+                [(ngModel)]="form.prenom" name="prenom" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="client-telephone">Téléphone <em>*</em></label>
+            <div class="inp">
+              <i class="bi bi-telephone"></i>
+              <input id="client-telephone" autocomplete="off" type="tel" placeholder="77 000 00 00"
+                [(ngModel)]="form.telephone" name="telephone" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="client-email">E-mail</label>
+            <div class="inp">
+              <i class="bi bi-envelope"></i>
+              <input id="client-email" autocomplete="off" type="email" placeholder="nom@exemple.com"
+                [(ngModel)]="form.email" name="email">
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="client-adresse">Adresse</label>
+            <div class="inp">
+              <i class="bi bi-geo-alt"></i>
+              <input id="client-adresse" autocomplete="off" type="text" placeholder="Quartier, ville"
+                [(ngModel)]="form.adresse" name="adresse">
+            </div>
+          </div>
+
+          <div>
+            <span class="lab" id="client-piece-label">Pièce d'identité</span>
+            <div class="chips" role="group" aria-labelledby="client-piece-label">
+              @for (p of pieces; track p.value) {
+                <button type="button" class="chip"
+                  [class.chip--on]="form.piece_identite === p.value"
+                  [attr.aria-pressed]="form.piece_identite === p.value"
+                  [attr.title]="p.label"
+                  (click)="choosePiece(p.value)">
+                  <i class="bi" [ngClass]="p.icon"></i>{{ p.short || p.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="client-numero-piece">Numéro de la pièce</label>
+            <div class="inp">
+              <input id="client-numero-piece" autocomplete="off" type="text"
+                [(ngModel)]="form.numero_piece" name="numero_piece">
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer le client') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (clientToDelete) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="confirm-title">
+        Supprimer le client {{ clientToDelete.nom }} {{ clientToDelete.prenom }} ?
+      </h2>
+      <p class="confirm__text" id="confirm-text">Cette suppression est définitive.</p>
+      @if (deleteError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ deleteError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting">
+          <i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
