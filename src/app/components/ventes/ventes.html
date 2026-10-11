@@ -81,7 +81,7 @@
                 <td>
                   <span class="who">
                     <span class="avatar">{{ initials(v.client) }}</span>
-                    <span class="who__name">{{ v.client?.nom }} {{ v.client?.prenom }}</span>
+                    <span class="who__name">{{ v.client?.prenom }} {{ v.client?.nom }}</span>
                   </span>
                 </td>
                 <td>
@@ -186,7 +186,7 @@
                       [attr.aria-selected]="form.client_id === c.id"
                       (click)="pickClient(c)">
                       <span class="avatar avatar--sm">{{ initials(c) }}</span>
-                      <span class="pick__txt">{{ c.nom }} {{ c.prenom }}</span>
+                      <span class="pick__txt">{{ c.prenom }} {{ c.nom }}</span>
                       @if (form.client_id === c.id) { <i class="bi bi-check2"></i> }
                     </button>
                   } @empty {
