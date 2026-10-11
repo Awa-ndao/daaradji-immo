@@ -151,19 +151,21 @@
             </div>
           }
 
-          <div>
-            <label class="lab" for="client-nom">Nom <em>*</em></label>
-            <div class="inp">
-              <input id="client-nom" autocomplete="off" type="text"
-                [(ngModel)]="form.nom" name="nom" required>
-            </div>
-          </div>
+         
 
           <div>
             <label class="lab" for="client-prenom">Prénom <em>*</em></label>
             <div class="inp">
               <input id="client-prenom" autocomplete="off" type="text"
                 [(ngModel)]="form.prenom" name="prenom" required>
+            </div>
+          </div>
+
+           <div>
+            <label class="lab" for="client-nom">Nom <em>*</em></label>
+            <div class="inp">
+              <input id="client-nom" autocomplete="off" type="text"
+                [(ngModel)]="form.nom" name="nom" required>
             </div>
           </div>
 
@@ -184,7 +186,7 @@
                 [(ngModel)]="form.email" name="email">
             </div>
           </div>
-
+ 
           <div class="full">
             <label class="lab" for="client-adresse">Adresse</label>
             <div class="inp">
