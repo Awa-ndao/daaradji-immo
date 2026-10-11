@@ -1,1 +1,352 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">🤝 Gestion des Ventes</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Ventes</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouvelle vente
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche + statut -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un client, un bien…"
+          aria-label="Rechercher une vente" autocomplete="off"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (s of statutTabs; track s.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterStatut === s.value"
+            [attr.aria-pressed]="filterStatut === s.value"
+            (click)="setStatut(s.value)">{{ s.label }}</button>
+        }
+      </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Bien</th>
+              <th class="num">Prix de vente</th>
+              <th class="num">Commission agence</th>
+              <th class="num">Part agent</th>
+              <th>Date</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="8" class="empty">Chargement des ventes…</td></tr>
+            } @else if (ventes.length === 0) {
+              <tr>
+                <td colspan="8" class="empty">
+                  <i class="bi bi-tag"></i>
+                  Aucune vente ne correspond à ces critères.
+                </td>
+              </tr>
+            }
+            @for (v of ventes; track v.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initials(v.client) }}</span>
+                    <span class="who__name">{{ v.client?.nom }} {{ v.client?.prenom }}</span>
+                  </span>
+                </td>
+                <td>
+                  <span class="bien">
+                    <b>{{ v.bien?.reference }}</b>
+                    <span><i class="bi bi-geo-alt"></i> {{ v.bien?.localisation }}</span>
+                  </span>
+                </td>
+                <td class="num price">{{ nombre(v.prix_vente) }}<small>FCFA</small></td>
+                <td class="num price">{{ nombre(v.commission_agence) }}<small>FCFA</small></td>
+                <td class="num">
+                  @if (v.montant_reverse > 0) {
+                    <span class="part">{{ nombre(v.montant_reverse) }}<small>FCFA</small></span>
+                  } @else {
+                    <span class="soft">—</span>
+                  }
+                </td>
+                <td class="soft">{{ v.date_vente | date:'dd/MM/yyyy' }}</td>
+                <td><span class="st" [ngClass]="'st--' + v.statut">{{ statutLabel(v.statut) }}</span></td>
+                <td>
+                  <div class="acts">
+                    @if (v.statut === 'en_cours') {
+                      <button type="button" class="act act--ok" (click)="ask('finalise', v)"
+                        aria-label="Finaliser la vente" title="Finaliser">
+                        <i class="bi bi-check2-circle"></i>
+                      </button>
+                      <button type="button" class="act act--warn" (click)="ask('annule', v)"
+                        aria-label="Annuler la vente" title="Annuler la vente">
+                        <i class="bi bi-x-circle"></i>
+                      </button>
+                    }
+                    <button type="button" class="act act--del" (click)="ask('delete', v)"
+                      aria-label="Supprimer la vente" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="vente-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveVente()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="vente-form-title">Nouvelle vente</h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <!-- Client -->
+          <div>
+            <span class="lab" id="vente-client-label">Client <em>*</em></span>
+            <div class="pick">
+              <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker === 'client'"
+                aria-haspopup="listbox" aria-labelledby="vente-client-label"
+                [attr.aria-expanded]="openPicker === 'client'" (click)="togglePicker('client')">
+                <span [class.pick__ph]="!form.client_id">{{ clientLabel() || 'Choisir un client' }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              @if (openPicker === 'client') {
+                <div class="pick__veil" (click)="togglePicker(null)"></div>
+                <div class="pick__menu" role="listbox" aria-labelledby="vente-client-label">
+                  @for (c of clients; track c.id) {
+                    <button type="button" class="pick__opt" role="option"
+                      [class.pick__opt--sel]="form.client_id === c.id"
+                      [attr.aria-selected]="form.client_id === c.id"
+                      (click)="pickClient(c)">
+                      <span class="avatar avatar--sm">{{ initials(c) }}</span>
+                      <span class="pick__txt">{{ c.nom }} {{ c.prenom }}</span>
+                      @if (form.client_id === c.id) { <i class="bi bi-check2"></i> }
+                    </button>
+                  } @empty {
+                    <p class="pick__empty">Aucun client. Ajoutez-en un dans le module Clients.</p>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Bien -->
+          <div>
+            <span class="lab" id="vente-bien-label">Bien disponible <em>*</em></span>
+            <div class="pick">
+              <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker === 'bien'"
+                aria-haspopup="listbox" aria-labelledby="vente-bien-label"
+                [attr.aria-expanded]="openPicker === 'bien'" (click)="togglePicker('bien')">
+                <span [class.pick__ph]="!form.bien_id">{{ bienLabel() || 'Choisir un bien' }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              @if (openPicker === 'bien') {
+                <div class="pick__veil" (click)="togglePicker(null)"></div>
+                <div class="pick__menu" role="listbox" aria-labelledby="vente-bien-label">
+                  @for (b of biens; track b.id) {
+                    <button type="button" class="pick__opt" role="option"
+                      [class.pick__opt--sel]="form.bien_id === b.id"
+                      [attr.aria-selected]="form.bien_id === b.id"
+                      (click)="pickBien(b)">
+                      <span class="pick__txt"><b>{{ b.reference }}</b> {{ b.localisation }}</span>
+                      <span class="pick__meta">{{ nombre(b.prix) }} FCFA</span>
+                      @if (form.bien_id === b.id) { <i class="bi bi-check2"></i> }
+                    </button>
+                  } @empty {
+                    <p class="pick__empty">Aucun bien disponible à la vente.</p>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Type de bien -->
+          <div class="full">
+            <span class="lab" id="vente-type-label">Type de bien <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="vente-type-label">
+              @for (t of typesBien; track t.value) {
+                <button type="button" [class.on]="form.type_bien === t.value"
+                  [attr.aria-pressed]="form.type_bien === t.value"
+                  (click)="choose('type_bien', t.value)">
+                  <i class="bi" [ngClass]="t.icon"></i>{{ t.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="vente-prix">Prix de vente <em>*</em></label>
+            <div class="inp">
+              <input id="vente-prix" type="number" min="0" placeholder="0" autocomplete="off"
+                [(ngModel)]="form.prix_vente" name="prix_vente" required>
+              <span>FCFA</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="vente-date">Date de vente <em>*</em></label>
+            <div class="inp">
+              <input id="vente-date" type="date" autocomplete="off"
+                [(ngModel)]="form.date_vente" name="date_vente" required>
+            </div>
+          </div>
+
+          <!-- Mode de paiement -->
+          <div class="full">
+            <span class="lab" id="vente-paiement-label">Mode de paiement <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="vente-paiement-label">
+              @for (m of modesPaiement; track m.value) {
+                <button type="button" [class.on]="form.mode_paiement === m.value"
+                  [attr.aria-pressed]="form.mode_paiement === m.value"
+                  (click)="choose('mode_paiement', m.value)">
+                  <i class="bi" [ngClass]="m.icon"></i>{{ m.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (form.type_bien !== 'propre') {
+            <div>
+              <label class="lab" for="vente-commission">Commission totale</label>
+              <div class="inp">
+                <input id="vente-commission" type="number" min="0" placeholder="0" autocomplete="off"
+                  [(ngModel)]="form.commission_agence" name="commission_agence"
+                  (ngModelChange)="refresh()">
+                <span>FCFA</span>
+              </div>
+            </div>
+
+            @if (form.type_bien === 'confie_agent') {
+              <div>
+                <label class="lab" for="vente-agent">Nom de l'agent externe</label>
+                <div class="inp">
+                  <i class="bi bi-person"></i>
+                  <input id="vente-agent" type="text" placeholder="Prénom Nom" autocomplete="off"
+                    [(ngModel)]="form.nom_agent_externe" name="nom_agent_externe">
+                </div>
+              </div>
+
+              <div class="full split" aria-live="polite">
+                <span class="split__title">Répartition de la commission (50/50)</span>
+                <div class="split__row">
+                  <span class="split__part split__part--agence">
+                    <small>Agence</small>
+                    {{ nombre(getPartAgence()) }} FCFA
+                  </span>
+                  <span class="split__part split__part--agent">
+                    <small>Agent externe</small>
+                    {{ nombre(getPartAgent()) }} FCFA
+                  </span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : 'Enregistrer la vente' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation : finaliser, annuler ou supprimer une vente -->
+@if (pending) {
+  <div class="veil" (click)="cancelPending()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi" [ngClass]="pendingText().icon"></i></div>
+      <h2 class="confirm__title" id="confirm-title">{{ pendingText().title }}</h2>
+      <p class="confirm__text" id="confirm-text">
+        {{ pending.vente.bien?.reference }} vendu à {{ pending.vente.client?.nom }} {{ pending.vente.client?.prenom }}
+        pour {{ nombre(pending.vente.prix_vente) }} FCFA. {{ pendingText().text }}
+      </p>
+      @if (pendingError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ pendingError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelPending()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmPending()" [disabled]="working">
+          <i class="bi" [ngClass]="pendingText().icon"></i>
+          {{ working ? 'Un instant…' : pendingText().action }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
