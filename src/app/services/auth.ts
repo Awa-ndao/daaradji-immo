@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { ACCES, ROLE_LIBELLES } from './acces';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -32,4 +33,29 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
   isLoggedIn(): boolean { return !!this.getToken(); }
+
+  // ---------- Rôle de la personne connectée ----------
+
+  getRole(): string {
+    return this.getUser()?.role || '';
+  }
+
+  roleLabel(): string {
+    return ROLE_LIBELLES[this.getRole()] || '';
+  }
+
+  // Le module (biens, ventes, utilisateurs…) est-il ouvert à ce rôle ?
+  peutAcceder(module: string): boolean {
+    const roles = ACCES[module];
+    return !!roles && roles.includes(this.getRole() as any);
+  }
+
+  // Propriétaire et administrateur : voient les dossiers de tous les agents
+  estDirection(): boolean {
+    return ['proprietaire', 'administrateur'].includes(this.getRole());
+  }
+
+  estAgent(): boolean {
+    return this.getRole() === 'agent';
+  }
 }

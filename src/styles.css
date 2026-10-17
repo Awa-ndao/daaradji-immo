@@ -11,3 +11,13 @@ body {
   font-family: 'Inter', sans-serif;
   background-color: #f2f4f7;
 }
+/* Barre de défilement de la page : fine, discrète, aux couleurs de l'agence */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #C9CCC4 transparent;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C9CCC4; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #0F6B3A; }

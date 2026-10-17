@@ -1,1 +1,397 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">📅 Gestion des Rendez-vous</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Rendez-vous</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouveau rendez-vous
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche + statut -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un client, un objet, un lieu…"
+          aria-label="Rechercher un rendez-vous" autocomplete="off"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (s of statutTabs; track s.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterStatut === s.value"
+            [attr.aria-pressed]="filterStatut === s.value"
+            (click)="setStatut(s.value)">{{ s.label }}</button>
+        }
+      </div>
+
+      <!-- Filtre par agent (direction) -->
+      @if (voitTousLesDossiers()) {
+        <div class="pick pick--filtre">
+          <button type="button" class="pick__btn" [class.pick__btn--open]="agentFiltreOuvert"
+            aria-haspopup="listbox" [attr.aria-expanded]="agentFiltreOuvert" (click)="toggleAgentFiltre()">
+            <i class="bi bi-person-badge"></i>
+            <span>{{ agentFiltreLabel() }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          @if (agentFiltreOuvert) {
+            <div class="pick__veil" (click)="toggleAgentFiltre()"></div>
+            <div class="pick__menu" role="listbox" aria-label="Filtrer par agent">
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="!filterAgent"
+                (click)="setAgentFiltre('')"><span class="pick__txt">Tous les agents</span></button>
+              @for (a of agents; track a.id) {
+                <button type="button" class="pick__opt" role="option"
+                  [class.pick__opt--sel]="filterAgent == a.id" (click)="setAgentFiltre(a.id)">
+                  <span class="pick__txt">{{ agentLibelle(a) }}</span>
+                </button>
+              }
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="filterAgent === 'aucun'"
+                (click)="setAgentFiltre('aucun')"><span class="pick__txt">Non attribués</span></button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Date et heure</th>
+              <th>Objet</th>
+              <th>Lieu</th>
+              <th>Statut</th>
+              @if (voitTousLesDossiers()) { <th>Agent</th> }
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td [attr.colspan]="voitTousLesDossiers() ? 7 : 6" class="empty">Chargement des rendez-vous…</td></tr>
+            } @else if (rdvs.length === 0) {
+              <tr>
+                <td [attr.colspan]="voitTousLesDossiers() ? 7 : 6" class="empty">
+                  <i class="bi bi-calendar-x"></i>
+                  @if (searchTerm || filterStatut) {
+                    Aucun rendez-vous ne correspond à ces critères.
+                  } @else {
+                    Aucun rendez-vous pour l'instant.
+                  }
+                </td>
+              </tr>
+            }
+            @for (r of rdvs; track r.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initials(r.client) }}</span>
+                    <span class="who__name">{{ r.client?.prenom }} {{ r.client?.nom }}</span>
+                  </span>
+                </td>
+                <td>
+                  <span class="when">
+                    <b>{{ r.date_heure | date:'EEE d MMM yyyy':'':'fr' }}</b>
+                    <span><i class="bi bi-clock"></i> {{ r.date_heure | date:'HH:mm' }}</span>
+                  </span>
+                </td>
+                <td class="objet">{{ r.objet }}</td>
+                <td class="soft">
+                  @if (r.lieu_rdv) { <i class="bi bi-geo-alt"></i> {{ r.lieu_rdv }} } @else { — }
+                </td>
+                <td><span class="st" [ngClass]="'st--' + r.statut">{{ statutLabel(r.statut) }}</span></td>
+                @if (voitTousLesDossiers()) {
+                  <td>
+                    <button type="button" class="agent" [class.agent--none]="agentNom(r) === 'Non attribué'"
+                      (click)="ouvrirReattribution(r)" [title]="agentNom(r) + ' · cliquer pour changer d’agent'">
+                      <span class="agent__ini">{{ agentInitiales(r) }}</span>
+                      <span class="agent__nom">{{ agentCourt(r) }}</span>
+                      <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                  </td>
+                }
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="editRdv(r)"
+                      aria-label="Modifier le rendez-vous" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="askDelete(r)"
+                      aria-label="Supprimer le rendez-vous" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rdv-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveRdv()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="rdv-form-title">
+              {{ editingId ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <!-- Agent qui suit le dossier -->
+          @if (peutChoisirAgent()) {
+            <div class="full">
+              <span class="lab" id="agent-choix-label">Agent responsable{{ voitTousLesDossiers() ? '' : ' *' }}</span>
+              <div class="pick">
+                <button type="button" class="pick__btn" [class.pick__btn--open]="agentChoixOuvert"
+                  aria-haspopup="listbox" aria-labelledby="agent-choix-label"
+                  [attr.aria-expanded]="agentChoixOuvert" (click)="toggleAgentChoix()">
+                  <span [class.pick__ph]="!form.user_id && !voitTousLesDossiers()">{{ agentChoixLabel() }}</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                @if (agentChoixOuvert) {
+                  <div class="pick__veil" (click)="toggleAgentChoix()"></div>
+                  <div class="pick__menu" role="listbox" aria-labelledby="agent-choix-label">
+                    @for (a of agents; track a.id) {
+                      <button type="button" class="pick__opt" role="option"
+                        [class.pick__opt--sel]="form.user_id == a.id" (click)="pickAgent(a.id)">
+                        <span class="pick__txt">{{ agentLibelle(a) }}</span>
+                        @if (form.user_id == a.id) { <i class="bi bi-check2"></i> }
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun agent actif. Créez-en un dans Utilisateurs.</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Client -->
+          <div>
+            <span class="lab" id="rdv-client-label">Client <em>*</em></span>
+            <div class="pick">
+              <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker"
+                aria-haspopup="listbox" aria-labelledby="rdv-client-label"
+                [attr.aria-expanded]="openPicker" (click)="openClientPicker()">
+                <span [class.pick__ph]="!form.client_id">{{ clientLabel() || 'Choisir un client' }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              @if (openPicker) {
+                <div class="pick__veil" (click)="closeClientPicker()"></div>
+                <div class="pick__menu" role="listbox" aria-labelledby="rdv-client-label">
+                  @if (clientsLoading) {
+                    <p class="pick__empty">Chargement des clients…</p>
+                  } @else if (clientsError) {
+                    <p class="pick__empty pick__empty--err">
+                      {{ clientsError }}
+                      <button type="button" class="pick__retry" (click)="loadClients()">Réessayer</button>
+                    </p>
+                  } @else {
+                    @for (c of clients; track c.id) {
+                      <button type="button" class="pick__opt" role="option"
+                        [class.pick__opt--sel]="sameId(form.client_id, c.id)"
+                        [attr.aria-selected]="sameId(form.client_id, c.id)"
+                        (click)="pickClient(c)">
+                        <span class="avatar avatar--sm">{{ initials(c) }}</span>
+                        <span class="pick__txt">{{ c.prenom }} {{ c.nom }}</span>
+                        @if (sameId(form.client_id, c.id)) { <i class="bi bi-check2"></i> }
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun client. Ajoutez-en un dans le module Clients.</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="rdv-date">Date et heure <em>*</em></label>
+            <div class="inp">
+              <input id="rdv-date" type="datetime-local" autocomplete="off"
+                [(ngModel)]="form.date_heure" name="date_heure" required>
+            </div>
+          </div>
+
+          <!-- Objet : suggestions en un clic, ou texte libre -->
+          <div class="full">
+            <label class="lab" for="rdv-objet">Objet <em>*</em></label>
+            <div class="chips chips--sm" role="group" aria-label="Objets courants">
+              @for (o of objetsCourants; track o) {
+                <button type="button" class="chip"
+                  [class.chip--on]="form.objet === o"
+                  [attr.aria-pressed]="form.objet === o"
+                  (click)="chooseObjet(o)">{{ o }}</button>
+              }
+            </div>
+            <div class="inp">
+              <input id="rdv-objet" type="text" autocomplete="off" placeholder="Ou décrivez l’objet du rendez-vous"
+                [(ngModel)]="form.objet" name="objet" required (ngModelChange)="refresh()">
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="rdv-lieu">Lieu</label>
+            <div class="inp">
+              <i class="bi bi-geo-alt"></i>
+              <input id="rdv-lieu" type="text" autocomplete="off" placeholder="Agence DAARADJI, adresse du bien…"
+                [(ngModel)]="form.lieu_rdv" name="lieu_rdv">
+            </div>
+          </div>
+
+          <!-- Statut -->
+          <div class="full">
+            <span class="lab" id="rdv-statut-label">Statut</span>
+            <div class="seg" role="group" aria-labelledby="rdv-statut-label">
+              @for (s of statuts; track s.value) {
+                <button type="button" [class.on]="form.statut === s.value"
+                  [attr.aria-pressed]="form.statut === s.value"
+                  (click)="choose('statut', s.value)">
+                  <i class="bi" [ngClass]="s.icon"></i>{{ s.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="rdv-notes">Notes</label>
+            <div class="inp inp--area">
+              <textarea id="rdv-notes" rows="2" placeholder="Informations utiles pour l’agent…"
+                [(ngModel)]="form.notes" name="notes"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer le rendez-vous') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (rdvToDelete) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="confirm-title">Supprimer ce rendez-vous ?</h2>
+      <p class="confirm__text" id="confirm-text">
+        {{ rdvToDelete.objet }} avec {{ rdvToDelete.client?.prenom }} {{ rdvToDelete.client?.nom }},
+        le {{ rdvToDelete.date_heure | date:'dd/MM/yyyy à HH:mm' }}. Cette suppression est définitive.
+      </p>
+      @if (deleteError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ deleteError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting">
+          <i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Changer l'agent d'un dossier -->
+@if (reattribution) {
+  <div class="veil" (click)="fermerReattribution()">
+    <div class="confirm" role="dialog" aria-modal="true" aria-labelledby="reattr-title"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-person-badge"></i></div>
+      <h2 class="confirm__title" id="reattr-title">Agent responsable</h2>
+      <p class="confirm__text">Choisissez l’agent qui suit ce dossier. Il le verra dans sa liste ; l’ancien agent ne le verra plus.</p>
+      <div class="agents-list" role="radiogroup" aria-labelledby="reattr-title">
+        @for (a of agents; track a.id) {
+          <button type="button" class="agent-opt" role="radio"
+            [class.agent-opt--on]="reattributionId == a.id" [attr.aria-checked]="reattributionId == a.id"
+            (click)="choisirReattribution(a.id)">
+            <span class="agent__ini">{{ (a.name || '?').charAt(0).toUpperCase() }}</span>
+            {{ agentLibelle(a) }}
+            @if (reattributionId == a.id) { <i class="bi bi-check2"></i> }
+          </button>
+        } @empty {
+          <p class="soft">Aucun agent actif.</p>
+        }
+      </div>
+      @if (reattributionError) {
+        <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ reattributionError }}</div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="fermerReattribution()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmerReattribution()" [disabled]="agentBusy || !reattributionId">
+          {{ agentBusy ? 'Un instant…' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

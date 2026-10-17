@@ -1,1 +1,573 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">🏗️ Gestion des Constructions</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Constructions</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouveau chantier
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche + statut -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un client, un terrain…"
+          aria-label="Rechercher un chantier" autocomplete="off"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (s of statutTabs; track s.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterStatut === s.value"
+            [attr.aria-pressed]="filterStatut === s.value"
+            (click)="setStatut(s.value)">{{ s.label }}</button>
+        }
+      </div>
+
+      <!-- Filtre par agent (direction) -->
+      @if (voitTousLesDossiers()) {
+        <div class="pick pick--filtre">
+          <button type="button" class="pick__btn" [class.pick__btn--open]="agentFiltreOuvert"
+            aria-haspopup="listbox" [attr.aria-expanded]="agentFiltreOuvert" (click)="toggleAgentFiltre()">
+            <i class="bi bi-person-badge"></i>
+            <span>{{ agentFiltreLabel() }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          @if (agentFiltreOuvert) {
+            <div class="pick__veil" (click)="toggleAgentFiltre()"></div>
+            <div class="pick__menu" role="listbox" aria-label="Filtrer par agent">
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="!filterAgent"
+                (click)="setAgentFiltre('')"><span class="pick__txt">Tous les agents</span></button>
+              @for (a of agents; track a.id) {
+                <button type="button" class="pick__opt" role="option"
+                  [class.pick__opt--sel]="filterAgent == a.id" (click)="setAgentFiltre(a.id)">
+                  <span class="pick__txt">{{ agentLibelle(a) }}</span>
+                </button>
+              }
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="filterAgent === 'aucun'"
+                (click)="setAgentFiltre('aucun')"><span class="pick__txt">Non attribués</span></button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Terrain</th>
+              <th class="num">Montant total</th>
+              <th>Niveaux</th>
+              <th>Dates</th>
+              <th>Avancement</th>
+              <th>Statut</th>
+              @if (voitTousLesDossiers()) { <th>Agent</th> }
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td [attr.colspan]="voitTousLesDossiers() ? 9 : 8" class="empty">Chargement des chantiers…</td></tr>
+            } @else if (constructions.length === 0) {
+              <tr>
+                <td [attr.colspan]="voitTousLesDossiers() ? 9 : 8" class="empty">
+                  <i class="bi bi-building"></i>
+                  @if (searchTerm || filterStatut) {
+                    Aucun chantier ne correspond à ces critères.
+                  } @else {
+                    Aucun chantier pour l’instant.
+                  }
+                </td>
+              </tr>
+            }
+            @for (c of constructions; track c.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initials(c.client) }}</span>
+                    <span class="who__name">{{ c.client?.prenom }} {{ c.client?.nom }}</span>
+                  </span>
+                </td>
+                <td>
+                  <span class="bien">
+                    <b>{{ c.bien?.reference || '—' }}</b>
+                    @if (c.bien?.localisation) { <span><i class="bi bi-geo-alt"></i> {{ c.bien?.localisation }}</span> }
+                  </span>
+                </td>
+                <td class="num price">{{ nombre(c.montant_total) }}<small>FCFA</small></td>
+                <td class="soft">{{ niveauxLabel(c.niveaux) }}</td>
+                <td>
+                  <span class="dates">
+                    <span>Début <b>{{ c.date_debut | date:'dd/MM/yyyy' }}</b></span>
+                    @if (c.date_livraison) {
+                      <span>Livré <b>{{ c.date_livraison | date:'dd/MM/yyyy' }}</b></span>
+                    }
+                  </span>
+                </td>
+                <td>
+                  @if (etapesTotal(c)) {
+                    <button type="button" class="steps" (click)="voirEtapes(c)"
+                      [attr.aria-label]="'Voir les étapes : ' + etapesFaites(c) + ' sur ' + etapesTotal(c) + ' terminées'">
+                      <span class="steps__dots">
+                        @for (e of c.etapes; track e.id) {
+                          <span class="dot" [ngClass]="'dot--' + e.statut" [title]="e.nom + ' : ' + etapeLabel(e.statut)"></span>
+                        }
+                      </span>
+                      <span class="steps__count">{{ etapesFaites(c) }}/{{ etapesTotal(c) }}</span>
+                    </button>
+                  } @else {
+                    <span class="soft">—</span>
+                  }
+                </td>
+                <td><span class="st" [ngClass]="'st--' + c.statut">{{ statutLabel(c.statut) }}</span></td>
+                @if (voitTousLesDossiers()) {
+                  <td>
+                    <button type="button" class="agent" [class.agent--none]="agentNom(c) === 'Non attribué'"
+                      (click)="ouvrirReattribution(c)" [title]="agentNom(c) + ' · cliquer pour changer d’agent'">
+                      <span class="agent__ini">{{ agentInitiales(c) }}</span>
+                      <span class="agent__nom">{{ agentCourt(c) }}</span>
+                      <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                  </td>
+                }
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act act--ok" (click)="voirEtapes(c)"
+                      aria-label="Suivre le chantier" title="Suivi des étapes">
+                      <i class="bi bi-list-check"></i>
+                    </button>
+                    <button type="button" class="act" (click)="editConstruction(c)"
+                      aria-label="Modifier le chantier" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="ask(c)"
+                      aria-label="Supprimer le chantier" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="construction-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveConstruction()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="construction-form-title">
+              {{ editingId ? 'Modifier le chantier' : 'Nouveau chantier' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d’un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+
+          <!-- Client -->
+          <div>
+            <span class="lab" id="construction-client-label">Client <em>*</em></span>
+            <div class="pick">
+              <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker === 'client'"
+                aria-haspopup="listbox" aria-labelledby="construction-client-label"
+                [attr.aria-expanded]="openPicker === 'client'" (click)="togglePicker('client')">
+                <span [class.pick__ph]="!form.client_id">{{ clientLabel() || 'Choisir un client' }}</span>
+                <i class="bi bi-chevron-down"></i>
+              </button>
+              @if (openPicker === 'client') {
+                <div class="pick__veil" (click)="togglePicker(null)"></div>
+                <div class="pick__menu" role="listbox" aria-labelledby="construction-client-label">
+                  @if (clientsEtat === 'loading') {
+                    <p class="pick__empty">Chargement…</p>
+                  } @else if (clientsEtat === 'error') {
+                    <p class="pick__empty pick__empty--err">
+                      Impossible de charger les clients.
+                      <button type="button" class="pick__retry" (click)="loadClients()">Réessayer</button>
+                    </p>
+                  } @else {
+                    @for (cl of clients; track cl.id) {
+                      <button type="button" class="pick__opt" role="option"
+                        [class.pick__opt--sel]="sameId(form.client_id, cl.id)"
+                        [attr.aria-selected]="sameId(form.client_id, cl.id)"
+                        (click)="pickClient(cl)">
+                        <span class="avatar avatar--sm">{{ initials(cl) }}</span>
+                        <span class="pick__txt">{{ cl.prenom }} {{ cl.nom }}</span>
+                        @if (sameId(form.client_id, cl.id)) { <i class="bi bi-check2"></i> }
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun client. Ajoutez-en un dans le module Clients.</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Terrain (non modifiable une fois le chantier créé) -->
+          <div>
+            <span class="lab" id="construction-bien-label">Terrain <em>*</em></span>
+            <div class="pick">
+              <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker === 'bien'"
+                aria-haspopup="listbox" aria-labelledby="construction-bien-label"
+                [attr.aria-expanded]="openPicker === 'bien'" [disabled]="editingId !== null"
+                (click)="togglePicker('bien')">
+                <span [class.pick__ph]="!form.bien_id">{{ bienLabel() || 'Choisir un terrain disponible' }}</span>
+                @if (editingId !== null) {
+                  <i class="bi bi-lock" title="Le terrain ne peut pas être changé"></i>
+                } @else {
+                  <i class="bi bi-chevron-down"></i>
+                }
+              </button>
+              @if (openPicker === 'bien') {
+                <div class="pick__veil" (click)="togglePicker(null)"></div>
+                <div class="pick__menu" role="listbox" aria-labelledby="construction-bien-label">
+                  @if (biensEtat === 'loading') {
+                    <p class="pick__empty">Chargement…</p>
+                  } @else if (biensEtat === 'error') {
+                    <p class="pick__empty pick__empty--err">
+                      Impossible de charger les terrains.
+                      <button type="button" class="pick__retry" (click)="loadBiens()">Réessayer</button>
+                    </p>
+                  } @else {
+                    @for (b of terrains(); track b.id) {
+                      <button type="button" class="pick__opt" role="option"
+                        [class.pick__opt--sel]="sameId(form.bien_id, b.id)"
+                        [attr.aria-selected]="sameId(form.bien_id, b.id)"
+                        (click)="pickBien(b)">
+                        <span class="pick__txt"><b>{{ b.reference }}</b> {{ b.localisation }}</span>
+                        @if (venduAuClient(b)) {
+                          <span class="pick__meta pick__meta--own">Terrain du client</span>
+                        } @else if (b.superficie) {
+                          <span class="pick__meta">{{ nombre(b.superficie) }} m²</span>
+                        }
+                        @if (sameId(form.bien_id, b.id)) { <i class="bi bi-check2"></i> }
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun terrain disponible. Ajoutez un bien de type « Terrain » dans le module Biens.</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="construction-montant">Montant total <em>*</em></label>
+            <div class="inp">
+              <input id="construction-montant" type="number" min="0" placeholder="0" autocomplete="off"
+                [(ngModel)]="form.montant_total" name="montant_total" required>
+              <span>FCFA</span>
+            </div>
+            @if (form.montant_total) {
+              <p class="hint">Soit <b>{{ nombre(form.montant_total) }} FCFA</b></p>
+            }
+          </div>
+
+          <div>
+            <label class="lab" for="construction-debut">Date de début <em>*</em></label>
+            <div class="inp">
+              <input id="construction-debut" type="date" autocomplete="off"
+                [(ngModel)]="form.date_debut" name="date_debut" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="construction-superficie">Superficie</label>
+            <div class="inp">
+              <input id="construction-superficie" type="number" min="0" placeholder="0" autocomplete="off"
+                [(ngModel)]="form.superficie" name="superficie">
+              <span>m²</span>
+            </div>
+          </div>
+
+          <!-- Niveaux : compteur -->
+          <div>
+            <span class="lab" id="construction-niveaux-label">Nombre de niveaux</span>
+            <div class="stepper" role="group" aria-labelledby="construction-niveaux-label">
+              <button type="button" (click)="changeNiveaux(-1)" [disabled]="form.niveaux <= 1"
+                aria-label="Un niveau de moins"><i class="bi bi-dash-lg"></i></button>
+              <output>{{ niveauxLabel(form.niveaux) }}</output>
+              <button type="button" (click)="changeNiveaux(1)"
+                aria-label="Un niveau de plus"><i class="bi bi-plus-lg"></i></button>
+            </div>
+          </div>
+
+          @if (editingId !== null) {
+            <div>
+              <label class="lab" for="construction-livraison">Date de livraison</label>
+              <div class="inp">
+                <input id="construction-livraison" type="date" autocomplete="off"
+                  [(ngModel)]="form.date_livraison" name="date_livraison">
+              </div>
+            </div>
+
+            <div class="full">
+              <span class="lab" id="construction-statut-label">Statut</span>
+              <div class="seg" role="group" aria-labelledby="construction-statut-label">
+                @for (s of statuts; track s.value) {
+                  <button type="button" [class.on]="form.statut === s.value"
+                    [attr.aria-pressed]="form.statut === s.value"
+                    (click)="chooseStatut(s.value)">
+                    <i class="bi" [ngClass]="s.icon"></i>{{ s.label }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer le chantier') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Suivi du chantier : les étapes -->
+@if (selectedConstruction; as sc) {
+  <div class="veil" (click)="closeEtapes()">
+    <div class="sheet sheet--narrow" role="dialog" aria-modal="true" aria-labelledby="etapes-title"
+      (click)="$event.stopPropagation()">
+      <div class="sheet__form">
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="etapes-title">Suivi du chantier</h2>
+            <p class="sheet__sub">
+              {{ sc.client?.prenom }} {{ sc.client?.nom }}
+              @if (sc.bien?.reference) { · {{ sc.bien?.reference }} — {{ sc.bien?.localisation }} }
+            </p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeEtapes()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body sheet__body--list">
+          <!-- Résumé -->
+          <div class="recap">
+            <div class="recap__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+              [attr.aria-valuenow]="avancement(sc)">
+              <span [style.width.%]="avancement(sc)"></span>
+            </div>
+            <div class="recap__row">
+              <span><b>{{ etapesFaites(sc) }}</b> étape{{ etapesFaites(sc) > 1 ? 's' : '' }} terminée{{ etapesFaites(sc) > 1 ? 's' : '' }} sur {{ etapesTotal(sc) }}</span>
+              <span>Versé <b>{{ nombre(verse(sc)) }}</b> / {{ nombre(sc.montant_total) }} FCFA</span>
+            </div>
+          </div>
+
+          @if (etapeError) {
+            <div class="msg msg--err" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ etapeError }}
+            </div>
+          }
+
+          @if (etapesLoading && !etapesTotal(sc)) {
+            <p class="empty">Chargement des étapes…</p>
+          }
+
+          <ol class="etapes">
+            @for (e of sc.etapes; track e.id) {
+              <li class="etape" [ngClass]="'etape--' + e.statut">
+                <span class="etape__num">
+                  @if (e.statut === 'termine') { <i class="bi bi-check-lg"></i> } @else { {{ e.numero }} }
+                </span>
+                <div class="etape__txt">
+                  <b>{{ e.nom }}</b>
+                  @if (e.montant_versement > 0) {
+                    <span>Versé : {{ nombre(e.montant_versement) }} FCFA</span>
+                  } @else {
+                    <span class="soft">Aucun versement enregistré</span>
+                  }
+                </div>
+                <span class="st" [ngClass]="'st--e-' + e.statut">{{ etapeLabel(e.statut) }}</span>
+                <div class="etape__act">
+                  @if (e.statut === 'en_attente') {
+                    @if (peutDemarrer(sc, e)) {
+                      <button type="button" class="btn-step btn-step--start" (click)="updateEtape(e, 'en_cours')"
+                        [disabled]="etapeBusy !== null">
+                        <i class="bi bi-play-fill"></i> {{ etapeBusy === e.id ? '…' : 'Démarrer' }}
+                      </button>
+                    } @else {
+                      <span class="etape__wait"><i class="bi bi-lock"></i> Après l’étape {{ e.numero - 1 }}</span>
+                    }
+                  }
+                  @if (e.statut === 'termine' && closingId !== e.id) {
+                    <button type="button" class="btn-step btn-step--fix" (click)="startClose(e)"
+                      [disabled]="etapeBusy !== null" title="Corriger le versement ou rouvrir l’étape">
+                      <i class="bi bi-pencil"></i> Corriger
+                    </button>
+                  }
+                  @if (e.statut === 'en_cours' && closingId !== e.id) {
+                    <button type="button" class="btn-step btn-step--done" (click)="startClose(e)"
+                      [disabled]="etapeBusy !== null">
+                      <i class="bi bi-check2"></i> Terminer
+                    </button>
+                  }
+                </div>
+
+                <!-- Fin d'étape : montant versé -->
+                @if (closingId === e.id) {
+                  <div class="close-step">
+                    <label class="lab" [attr.for]="'versement-' + e.id">
+                      {{ e.statut === 'termine' ? 'Corriger le montant versé' : 'Montant versé pour cette étape' }}
+                    </label>
+                    <div class="close-step__row">
+                      <div class="inp">
+                        <input [id]="'versement-' + e.id" type="number" min="0" placeholder="0" autocomplete="off"
+                          [(ngModel)]="versement" [name]="'versement-' + e.id" (keydown.enter)="confirmClose(e)">
+                        <span>FCFA</span>
+                      </div>
+                      <button type="button" class="btn-ghost" (click)="cancelClose()">Annuler</button>
+                      <button type="button" class="btn-step btn-step--done" (click)="confirmClose(e)"
+                        [disabled]="etapeBusy !== null">
+                        <i class="bi bi-check2"></i> {{ etapeBusy === e.id ? 'Un instant…' : 'Valider' }}
+                      </button>
+                    </div>
+                  </div>
+                }
+              </li>
+            } @empty {
+              @if (!etapesLoading) {
+                <li class="empty">Aucune étape pour ce chantier.</li>
+              }
+            }
+          </ol>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-main" (click)="closeEtapes()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Confirmation : supprimer un chantier -->
+@if (pending) {
+  <div class="veil" (click)="cancelPending()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="confirm-title">Supprimer ce chantier ?</h2>
+      <p class="confirm__text" id="confirm-text">
+        Chantier de {{ pending.client?.prenom }} {{ pending.client?.nom }}
+        @if (pending.bien?.reference) { sur {{ pending.bien?.reference }} }.
+        Cette suppression est définitive.
+      </p>
+      @if (pendingError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ pendingError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelPending()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmPending()" [disabled]="working">
+          <i class="bi bi-trash3"></i> {{ working ? 'Un instant…' : 'Supprimer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Changer l'agent d'un dossier -->
+@if (reattribution) {
+  <div class="veil" (click)="fermerReattribution()">
+    <div class="confirm" role="dialog" aria-modal="true" aria-labelledby="reattr-title"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-person-badge"></i></div>
+      <h2 class="confirm__title" id="reattr-title">Agent responsable</h2>
+      <p class="confirm__text">Choisissez l’agent qui suit ce dossier. Il le verra dans sa liste ; l’ancien agent ne le verra plus.</p>
+      <div class="agents-list" role="radiogroup" aria-labelledby="reattr-title">
+        @for (a of agents; track a.id) {
+          <button type="button" class="agent-opt" role="radio"
+            [class.agent-opt--on]="reattributionId == a.id" [attr.aria-checked]="reattributionId == a.id"
+            (click)="choisirReattribution(a.id)">
+            <span class="agent__ini">{{ (a.name || '?').charAt(0).toUpperCase() }}</span>
+            {{ agentLibelle(a) }}
+            @if (reattributionId == a.id) { <i class="bi bi-check2"></i> }
+          </button>
+        } @empty {
+          <p class="soft">Aucun agent actif.</p>
+        }
+      </div>
+      @if (reattributionError) {
+        <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ reattributionError }}</div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="fermerReattribution()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmerReattribution()" [disabled]="agentBusy || !reattributionId">
+          {{ agentBusy ? 'Un instant…' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

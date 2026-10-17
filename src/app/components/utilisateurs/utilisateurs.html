@@ -1,1 +1,318 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">👤 Gestion des Utilisateurs</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Utilisateurs</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouvel utilisateur
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Recherche + rôle -->
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un nom, un e-mail…"
+          aria-label="Rechercher un utilisateur" autocomplete="off"
+          [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+
+      <div class="tabs" role="group" aria-label="Filtrer par rôle">
+        @for (r of roleTabs; track r.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterRole === r.value"
+            [attr.aria-pressed]="filterRole === r.value"
+            (click)="setRole(r.value)">{{ r.label }}</button>
+        }
+      </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Rôle</th>
+              <th>Statut</th>
+              <th>Créé le</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="5" class="empty">Chargement des comptes…</td></tr>
+            } @else if (utilisateurs.length === 0) {
+              <tr>
+                <td colspan="5" class="empty">
+                  <i class="bi bi-people"></i>
+                  @if (searchTerm || filterRole) {
+                    Aucun compte ne correspond à ces critères.
+                  } @else {
+                    Aucun compte pour l’instant.
+                  }
+                </td>
+              </tr>
+            }
+            @for (u of utilisateurs; track u.id) {
+              <tr [class.row--off]="!estActif(u)">
+                <td>
+                  <span class="who">
+                    <span class="avatar" [class.avatar--off]="!estActif(u)">{{ initials(u.name) }}</span>
+                    <span class="who__txt">
+                      <span class="who__name">
+                        {{ u.name }}
+                        @if (estMoi(u)) { <em class="me-tag">Vous</em> }
+                      </span>
+                      <span class="who__mail">{{ u.email }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span class="role" [ngClass]="'role--' + u.role">
+                    <i class="bi" [ngClass]="roleIcon(u.role)"></i> {{ roleLabel(u.role) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="st" [ngClass]="estActif(u) ? 'st--actif' : 'st--inactif'">
+                    {{ estActif(u) ? 'Actif' : 'Désactivé' }}
+                  </span>
+                </td>
+                <td class="soft">{{ u.created_at ? (u.created_at | date:'dd/MM/yyyy') : '—' }}</td>
+                <td>
+                  <div class="acts">
+                    @if (peutModifier(u)) {
+                      <button type="button" class="act" (click)="editUtilisateur(u)"
+                        aria-label="Modifier le compte" title="Modifier">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    } @else {
+                      <span class="lock" title="Compte de direction : géré par le propriétaire">
+                        <i class="bi bi-lock"></i> Direction
+                      </span>
+                    }
+                    @if (peutGerer(u)) {
+                      @if (estActif(u)) {
+                        <button type="button" class="act act--warn" (click)="ask('statut', u)"
+                          aria-label="Désactiver le compte" title="Désactiver (bloque la connexion)">
+                          <i class="bi bi-person-slash"></i>
+                        </button>
+                      } @else {
+                        <button type="button" class="act act--ok" (click)="ask('statut', u)"
+                          aria-label="Réactiver le compte" title="Réactiver">
+                          <i class="bi bi-person-check"></i>
+                        </button>
+                      }
+                      <button type="button" class="act act--del" (click)="ask('delete', u)"
+                        aria-label="Supprimer le compte" title="Supprimer">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="user-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveUtilisateur()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="user-form-title">
+              {{ editingId ? 'Modifier le compte' : 'Nouvel utilisateur' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d’un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <div>
+            <label class="lab" for="user-name">Nom complet <em>*</em></label>
+            <div class="inp">
+              <i class="bi bi-person"></i>
+              <input id="user-name" type="text" autocomplete="off" placeholder="Ex : Aminata Diallo"
+                [(ngModel)]="form.name" name="name" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="user-email">Adresse e-mail <em>*</em></label>
+            <div class="inp">
+              <i class="bi bi-envelope"></i>
+              <input id="user-email" type="email" autocomplete="off" placeholder="prenom@daaradji.sn"
+                [(ngModel)]="form.email" name="email" required>
+            </div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="user-password">
+              @if (editingId) { Nouveau mot de passe } @else { Mot de passe <em>*</em> }
+            </label>
+            <div class="inp">
+              <i class="bi bi-lock"></i>
+              <input id="user-password" [type]="showPassword ? 'text' : 'password'" autocomplete="new-password"
+                [placeholder]="editingId ? 'Laisser vide pour garder le mot de passe actuel' : '8 caractères minimum'"
+                [(ngModel)]="form.password" name="password">
+              <button type="button" class="eye" (click)="togglePassword()"
+                [attr.aria-pressed]="showPassword"
+                [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+              </button>
+            </div>
+            @if (form.password && form.password.length < 8) {
+              <p class="hint hint--warn">Encore {{ 8 - form.password.length }} caractère{{ 8 - form.password.length > 1 ? 's' : '' }} au minimum.</p>
+            }
+          </div>
+
+          <!-- Rôle -->
+          <div class="full">
+            <span class="lab" id="user-role-label">Rôle <em>*</em></span>
+            @if (roleVerrouille()) {
+              <p class="role-lock"><i class="bi bi-lock"></i> {{ roleLabel(form.role) }} — seul le propriétaire peut changer votre rôle.</p>
+            } @else {
+            <div class="roles" role="radiogroup" aria-labelledby="user-role-label">
+              @for (r of rolesProposes(); track r.value) {
+                <button type="button" class="role-card" role="radio"
+                  [class.role-card--on]="form.role === r.value"
+                  [attr.aria-checked]="form.role === r.value"
+                  (click)="chooseRole(r.value)">
+                  <i class="bi" [ngClass]="r.icon"></i>
+                  <span>
+                    <b>{{ r.label }}</b>
+                    <small>{{ r.aide }}</small>
+                  </span>
+                </button>
+              }
+            </div>
+            }
+            @if (estAdmin() && !roleVerrouille()) {
+              <p class="hint">Les comptes propriétaire et administrateur sont créés par le propriétaire.</p>
+            }
+          </div>
+
+          <!-- Statut (pas pour son propre compte) -->
+          @if (editingId !== null && !estMoi({ id: editingId })) {
+            <div class="full">
+              <span class="lab" id="user-statut-label">Statut du compte</span>
+              <div class="seg" role="group" aria-labelledby="user-statut-label">
+                <button type="button" [class.on]="form.statut === 'actif'" [attr.aria-pressed]="form.statut === 'actif'"
+                  (click)="chooseStatut('actif')"><i class="bi bi-person-check"></i>Actif</button>
+                <button type="button" [class.on]="form.statut === 'inactif'" [attr.aria-pressed]="form.statut === 'inactif'"
+                  (click)="chooseStatut('inactif')"><i class="bi bi-person-slash"></i>Désactivé</button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Créer le compte') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation : désactiver / réactiver / supprimer un compte -->
+@if (pending) {
+  <div class="veil" (click)="cancelPending()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon">
+        <i class="bi" [ngClass]="pending.action === 'delete' ? 'bi-trash3' : (estActif(pending.user) ? 'bi-person-slash' : 'bi-person-check')"></i>
+      </div>
+      <h2 class="confirm__title" id="confirm-title">
+        @if (pending.action === 'delete') {
+          Supprimer ce compte ?
+        } @else if (estActif(pending.user)) {
+          Désactiver ce compte ?
+        } @else {
+          Réactiver ce compte ?
+        }
+      </h2>
+      <p class="confirm__text" id="confirm-text">
+        {{ pending.user.name }} ({{ roleLabel(pending.user.role) | lowercase }}).
+        @if (pending.action === 'delete') {
+          Cette suppression est définitive. Pour bloquer l’accès sans rien perdre, préférez « Désactiver ».
+        } @else if (estActif(pending.user)) {
+          La personne ne pourra plus se connecter. Vous pourrez réactiver le compte à tout moment.
+        } @else {
+          La personne pourra de nouveau se connecter.
+        }
+      </p>
+      @if (pendingError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ pendingError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelPending()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmPending()" [disabled]="working">
+          {{ working ? 'Un instant…' : (pending.action === 'delete' ? 'Supprimer' : (estActif(pending.user) ? 'Désactiver' : 'Réactiver')) }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

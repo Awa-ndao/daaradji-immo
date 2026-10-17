@@ -870,3 +870,116 @@ button { font: inherit; }
   .seg { flex-wrap: wrap; }
   .split__row { flex-direction: column; }
 }
+
+/* ---------- Agent responsable ---------- */
+.pick--filtre { flex: 0 0 auto; min-width: 200px; }
+.pick--filtre .pick__btn { height: 42px; gap: 8px; }
+.pick--filtre .pick__btn > i:first-child { color: #0F6B3A; }
+.pick--filtre .pick__btn span { flex: 1; text-align: left; }
+.pick--filtre .pick__menu { top: 46px; min-width: 220px; }
+
+.agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 190px;
+  padding: 4px 10px 4px 4px;
+  border: 1.5px solid #E3E4DC;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #17231C;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.agent:hover { border-color: #0F6B3A; }
+.agent > i { font-size: 11px; color: #8A938D; }
+.agent--static { cursor: default; }
+.agent--static:hover { border-color: #E3E4DC; }
+.agent__nom { overflow: hidden; text-overflow: ellipsis; }
+
+.agent__ini {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #0B4D2A;
+  color: #F2CC5B;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.agent--none { color: #8A938D; border-style: dashed; }
+.agent--none .agent__ini { background: #DDDFD8; color: #6B746E; }
+
+.agent:focus-visible,
+.agent-opt:focus-visible {
+  outline: 3px solid #D4A017;
+  outline-offset: 2px;
+}
+
+.agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+  max-height: 240px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.agent-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1.5px solid #DAD9D0;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: #17231C;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-opt:hover { border-color: #0F6B3A; }
+.agent-opt > i { margin-left: auto; color: #0B4D2A; }
+
+.agent-opt--on,
+.agent-opt--on:hover { border-color: #0B4D2A; background: #E8F2EB; }
+
+/* ---------- Tableau sans barre de défilement ---------- */
+/* Cellules un peu plus serrées pour faire tenir la colonne Agent */
+.data-table th { padding: 12px 12px; }
+.data-table td { padding: 10px 12px; }
+.data-table th:first-child,
+.data-table td:first-child { padding-left: 18px; }
+.data-table th:last-child,
+.data-table td:last-child { padding-right: 14px; }
+
+/* Titres de colonnes longs (« Commission agence ») : sur deux lignes si besoin */
+.data-table th { white-space: normal; line-height: 1.3; vertical-align: bottom; }
+.data-table th.num { min-width: 90px; }
+
+/* Agent : initiales + prénom ; le nom complet s'affiche au survol */
+.agent { max-width: 140px; padding-right: 8px; }
+.agent > i { display: none; }
+.agent:hover > i { display: inline; }
+
+/* Sur petit écran, s'il faut quand même défiler : barre fine aux couleurs de l'agence */
+.table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #C9CCC4 transparent;
+}
+.table-scroll::-webkit-scrollbar { height: 6px; }
+.table-scroll::-webkit-scrollbar-track { background: transparent; }
+.table-scroll::-webkit-scrollbar-thumb { background: #C9CCC4; border-radius: 999px; }
+.table-scroll::-webkit-scrollbar-thumb:hover { background: #0F6B3A; }

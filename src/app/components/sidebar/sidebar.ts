@@ -18,15 +18,22 @@ export class SidebarComponent implements OnInit {
   user: any;
   today = new Date();
   initiales = '';
+  roleLabel = '';
 
   constructor(private authService: AuthService) {}
 
   ngOnInit(): void {
     this.user = this.authService.getUser();
+    this.roleLabel = this.authService.roleLabel();
     if (this.user?.name) {
       const parts = this.user.name.trim().split(/\s+/);
       this.initiales = parts.map((p: string) => p[0]).join('').substring(0, 2).toUpperCase();
     }
+  }
+
+  // Le menu n'affiche que les modules ouverts au rôle connecté
+  peut(module: string): boolean {
+    return this.authService.peutAcceder(module);
   }
 
   logout(): void {

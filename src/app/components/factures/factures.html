@@ -1,1 +1,342 @@
-<div class="layout"><app-sidebar></app-sidebar><div class="main-content"><div class="page-header"><h4 class="fw-bold mb-0">📊 Gestion des Factures</h4></div><p class="text-muted">Module en cours de développement...</p></div></div>
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <!-- Bandeau : titre + bouton -->
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Factures</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouvelle facture
+      </button>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+    @if (errorMsg && !showForm) {
+      <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+    }
+
+    <!-- Filtres : type et statut -->
+    <div class="toolbar">
+      <div class="tabs" role="group" aria-label="Filtrer par type">
+        @for (t of typeTabs; track t.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterType === t.value"
+            [attr.aria-pressed]="filterType === t.value"
+            (click)="setType(t.value)">{{ t.label }}</button>
+        }
+      </div>
+
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (s of statutTabs; track s.value) {
+          <button type="button" class="tab"
+            [class.tab--on]="filterStatut === s.value"
+            [attr.aria-pressed]="filterStatut === s.value"
+            (click)="setStatut(s.value)">{{ s.label }}</button>
+        }
+      </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Numéro</th>
+              <th>Type</th>
+              <th>Bien concerné</th>
+              <th class="num">Montant</th>
+              <th>Créée le</th>
+              <th>Date limite</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="8" class="empty">Chargement des factures…</td></tr>
+            } @else if (factures.length === 0) {
+              <tr>
+                <td colspan="8" class="empty">
+                  <i class="bi bi-receipt"></i>
+                  @if (filterType || filterStatut) {
+                    Aucune facture ne correspond à ces critères.
+                  } @else {
+                    Aucune facture pour l’instant.
+                  }
+                </td>
+              </tr>
+            }
+            @for (f of factures; track f.id) {
+              <tr>
+                <td class="ref">{{ f.numero }}</td>
+                <td>
+                  <span class="type"><span class="type__ic"><i class="bi" [ngClass]="typeIcon(f.type)"></i></span>{{ typeLabel(f.type) }}</span>
+                </td>
+                <td>
+                  @if (concerne(f); as q) {
+                    <span class="bien">
+                      <b>{{ q.titre }}</b>
+                      <span>
+                        @if (q.ref) { <small>{{ q.ref }}</small> }
+                        @if (q.label) { <i class="bi bi-person"></i> {{ q.label }} }
+                      </span>
+                      @if (etapeDe(f); as e) { <em class="etape-tag">{{ etapeNom(e) }}</em> }
+                    </span>
+                  } @else {
+                    <span class="soft">—</span>
+                  }
+                </td>
+                <td class="num price">{{ nombre(f.montant) }}<small>FCFA</small></td>
+                <td class="soft">{{ f.date_emission | date:'dd/MM/yyyy' }}</td>
+                <td class="soft" [class.late]="f.statut === 'en_retard'">{{ f.date_echeance ? (f.date_echeance | date:'dd/MM/yyyy') : '—' }}</td>
+                <td><span class="st" [ngClass]="'st--' + f.statut">{{ statutLabel(f.statut) }}</span></td>
+                <td>
+                  <div class="acts">
+                    @if (f.statut !== 'payee') {
+                      <button type="button" class="act act--ok" (click)="ask('payee', f)"
+                        aria-label="Marquer la facture comme payée" title="Marquer comme payée">
+                        <i class="bi bi-check2-circle"></i>
+                      </button>
+                    }
+                    <button type="button" class="act" (click)="editFacture(f)"
+                      aria-label="Modifier la facture" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="ask('delete', f)"
+                      aria-label="Supprimer la facture" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)"
+            [disabled]="currentPage === 1" aria-label="Page précédente">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)"
+            [disabled]="currentPage === totalPages" aria-label="Page suivante">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>
+
+<!-- Formulaire : fenêtre par-dessus la liste -->
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="facture-form-title"
+      (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="saveFacture()" autocomplete="off" novalidate>
+
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="facture-form-title">
+              {{ editingId ? 'Modifier la facture' : 'Nouvelle facture' }}
+            </h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert">
+              <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
+            </div>
+          }
+
+          <!-- Type de facture -->
+          <div class="full">
+            <span class="lab" id="facture-type-label">Type de facture <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="facture-type-label">
+              @for (t of types; track t.value) {
+                <button type="button" [class.on]="form.type === t.value"
+                  [attr.aria-pressed]="form.type === t.value"
+                  (click)="chooseType(t.value)">
+                  <i class="bi" [ngClass]="t.icon"></i>{{ t.label }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Location, vente ou chantier concerné -->
+          @if (hasRelation()) {
+            <div class="full">
+              <span class="lab" id="facture-rel-label">{{ relationTitle() }}</span>
+              <div class="pick">
+                <button type="button" class="pick__btn" [class.pick__btn--open]="openPicker"
+                  aria-haspopup="listbox" aria-labelledby="facture-rel-label"
+                  [attr.aria-expanded]="openPicker" (click)="openRelationPicker()">
+                  <span [class.pick__ph]="!relationId()">{{ relationSelectedLabel() || 'Choisir dans la liste' }}</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                @if (openPicker) {
+                  <div class="pick__veil" (click)="closeRelationPicker()"></div>
+                  <div class="pick__menu" role="listbox" aria-labelledby="facture-rel-label">
+                    @if (relationsLoading > 0) {
+                      <p class="pick__empty">Chargement…</p>
+                    } @else if (relationsError) {
+                      <p class="pick__empty pick__empty--err">
+                        {{ relationsError }}
+                        <button type="button" class="pick__retry" (click)="loadRelations()">Réessayer</button>
+                      </p>
+                    } @else {
+                      @for (o of relationOptions(); track o.id) {
+                        <button type="button" class="pick__opt" role="option"
+                          [class.pick__opt--sel]="sameId(relationId(), o.id)"
+                          [attr.aria-selected]="sameId(relationId(), o.id)"
+                          (click)="pickRelation(o.id)">
+                          <span class="pick__txt"><b>{{ o.titre }}</b>@if (o.ref) { <small>{{ o.ref }}</small> }</span>
+                          @if (o.label) { <span class="pick__meta"><i class="bi bi-person"></i> {{ o.label }}</span> }
+                          @if (sameId(relationId(), o.id)) { <i class="bi bi-check2"></i> }
+                        </button>
+                      } @empty {
+                        <p class="pick__empty">Aucune opération disponible pour ce type : location en cours (hors terrain), vente ou chantier non annulé.</p>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Étape du chantier -->
+          @if (form.type === 'construction' && form.construction_id) {
+            <div class="full">
+              <span class="lab" id="facture-etape-label">Étape concernée</span>
+              @if (etapesDuChantier().length) {
+                <div class="seg seg--etapes" role="group" aria-labelledby="facture-etape-label">
+                  @for (e of etapesDuChantier(); track e.id) {
+                    <button type="button" [class.on]="sameId(form.etape_construction_id, e.id)"
+                      [attr.aria-pressed]="sameId(form.etape_construction_id, e.id)"
+                      (click)="chooseEtape(e)">
+                      <span class="seg__num">{{ e.numero }}</span>
+                      <span class="seg__txt">
+                        {{ etapeTitre(e) }}
+                        <small>
+                          @if (e.montant_versement > 0) { Versé {{ nombre(e.montant_versement) }} FCFA }
+                          @else { {{ e.statut === 'termine' ? 'Terminée' : (e.statut === 'en_cours' ? 'En cours' : 'En attente') }} }
+                        </small>
+                      </span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="soft">Ce chantier n’a pas encore d’étapes.</p>
+              }
+            </div>
+          }
+
+          <div class="full">
+            <label class="lab" for="facture-montant">Montant <em>*</em></label>
+            <div class="inp">
+              <input id="facture-montant" type="number" min="0" placeholder="0" autocomplete="off"
+                [(ngModel)]="form.montant" name="montant" required>
+              <span>FCFA</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="facture-emission">Date de création <em>*</em></label>
+            <div class="inp">
+              <input id="facture-emission" type="date" autocomplete="off"
+                [(ngModel)]="form.date_emission" name="date_emission" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="facture-echeance">Date limite de paiement</label>
+            <div class="inp">
+              <input id="facture-echeance" type="date" autocomplete="off"
+                [(ngModel)]="form.date_echeance" name="date_echeance">
+            </div>
+          </div>
+
+          <!-- Statut -->
+          <div class="full">
+            <span class="lab" id="facture-statut-label">Statut</span>
+            <div class="seg" role="group" aria-labelledby="facture-statut-label">
+              @for (s of statuts; track s.value) {
+                <button type="button" [class.on]="form.statut === s.value"
+                  [attr.aria-pressed]="form.statut === s.value"
+                  (click)="chooseStatut(s.value)">
+                  <i class="bi" [ngClass]="s.icon"></i>{{ s.label }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving">
+            <i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer la facture') }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Confirmation : marquer payée ou supprimer une facture -->
+@if (pending) {
+  <div class="veil" (click)="cancelPending()">
+    <div class="confirm" role="alertdialog" aria-modal="true"
+      aria-labelledby="confirm-title" aria-describedby="confirm-text"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon">
+        <i class="bi" [ngClass]="pending.action === 'payee' ? 'bi-check2-circle' : 'bi-trash3'"></i>
+      </div>
+      <h2 class="confirm__title" id="confirm-title">
+        {{ pending.action === 'payee' ? 'Marquer cette facture comme payée ?' : 'Supprimer cette facture ?' }}
+      </h2>
+      <p class="confirm__text" id="confirm-text">
+        Facture {{ pending.facture.numero }} ({{ typeLabel(pending.facture.type) | lowercase }}@if (concerne(pending.facture); as q) {, {{ q.titre }} }, {{ nombre(pending.facture.montant) }} FCFA).
+        {{ pending.action === 'payee' ? 'Son statut passera à « Payée ».' : 'Cette suppression est définitive.' }}
+      </p>
+      @if (pendingError) {
+        <div class="msg msg--err" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ pendingError }}
+        </div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelPending()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmPending()" [disabled]="working">
+          <i class="bi" [ngClass]="pending.action === 'payee' ? 'bi-check2-circle' : 'bi-trash3'"></i>
+          {{ working ? 'Un instant…' : (pending.action === 'payee' ? 'Marquer payée' : 'Supprimer') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

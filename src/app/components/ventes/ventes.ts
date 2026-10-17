@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/cor
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api';
+import { AuthService } from '../../services/auth';
 import { SidebarComponent } from '../sidebar/sidebar';
 
 type Action = 'finalise' | 'annule' | 'delete';
@@ -58,15 +59,167 @@ export class VentesComponent implements OnInit {
 
   private searchTimer: any;
 
+  // Agent responsable
+  agents: any[] = [];
+  filterAgent: any = '';
+  agentFiltreOuvert = false;
+  agentChoixOuvert = false;
+  reattribution: any = null;
+  reattributionId: any = '';
+  reattributionError = '';
+  agentBusy = false;
+
   constructor(
     private api: ApiService,
+    private auth: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.loadAgents();
     this.loadVentes();
     this.loadClients();
     this.loadBiens();
+  }
+
+
+  // ---------- Agent responsable du dossier ----------
+
+  // Propriétaire et administrateur voient les dossiers de tous les agents
+  voitTousLesDossiers(): boolean {
+    return this.auth.estDirection();
+  }
+
+  peutChoisirAgent(): boolean {
+    return this.auth.estDirection();
+  }
+
+  // Agents actifs (+ « moi » pour la direction, qui peut suivre un dossier elle-même)
+  loadAgents(): void {
+    if (!this.voitTousLesDossiers() && !this.peutChoisirAgent()) return;
+    this.api.get('agents').subscribe({
+      next: (d: any) => {
+        const liste = Array.isArray(d) ? d : (d?.data || []);
+        const moi = this.auth.getUser();
+        // La personne connectée apparaît comme « Moi »
+        this.agents = liste.map((a: any) => ({ ...a, moi: !!moi && String(a.id) === String(moi.id) }));
+        this.cdr.detectChanges();
+      },
+      error: () => { this.agents = []; this.cdr.detectChanges(); }
+    });
+  }
+
+  agentNomParId(id: any): string {
+    const a = this.agents.find(x => String(x.id) === String(id));
+    return a ? this.agentLibelle(a) : '';
+  }
+
+  // « Moussa Sarr », « Aminata Diallo · Administrateur », « Moi (Moustapha NDAO) »
+  agentLibelle(a: any): string {
+    if (a?.moi) return 'Moi (' + a.name + ')';
+    const roles: any = { administrateur: 'Administrateur', proprietaire: 'Propriétaire' };
+    return a?.name + (roles[a?.role] ? ' · ' + roles[a.role] : '');
+  }
+
+  agentNom(dossier: any): string {
+    return dossier?.user?.name || this.agentNomParId(dossier?.user_id) || 'Non attribué';
+  }
+
+  // Dans le tableau : prénom seulement (le nom complet est dans l'info-bulle)
+  agentCourt(dossier: any): string {
+    const nom = this.agentNom(dossier);
+    if (nom === 'Non attribué') return nom;
+    if (nom.startsWith('Moi')) return 'Moi';
+    return nom.replace(/ · .*$/, '').trim().split(/\s+/)[0];
+  }
+
+  agentInitiales(dossier: any): string {
+    const nom = dossier?.user?.name || this.agentNomParId(dossier?.user_id);
+    if (!nom) return '?';
+    const p = String(nom).replace(/^Moi \(|\)$/g, '').replace(/ · .*$/, '').trim().split(/\s+/);
+    return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+  }
+
+  // ---------- Filtre par agent ----------
+
+  agentFiltreLabel(): string {
+    if (!this.filterAgent) return 'Tous les agents';
+    if (this.filterAgent === 'aucun') return 'Non attribués';
+    return this.agentNomParId(this.filterAgent) || 'Agent';
+  }
+
+  toggleAgentFiltre(): void {
+    this.agentFiltreOuvert = !this.agentFiltreOuvert;
+    this.cdr.detectChanges();
+  }
+
+  setAgentFiltre(value: any): void {
+    this.filterAgent = value;
+    this.agentFiltreOuvert = false;
+    this.currentPage = 1;
+    this.loadVentes();
+  }
+
+  // ---------- Choix de l'agent dans le formulaire ----------
+
+  toggleAgentChoix(): void {
+    this.agentChoixOuvert = !this.agentChoixOuvert;
+    this.cdr.detectChanges();
+  }
+
+  pickAgent(id: any): void {
+    this.form.user_id = id;
+    this.agentChoixOuvert = false;
+    this.cdr.detectChanges();
+  }
+
+  agentChoixLabel(): string {
+    if (!this.form.user_id) {
+      return this.auth.estDirection() ? 'Moi (' + (this.auth.getUser()?.name || '') + ')' : 'Choisir l’agent';
+    }
+    return this.agentNomParId(this.form.user_id) || 'Agent';
+  }
+
+  // Changer l'agent d'un dossier (propriétaire, administrateur)
+  ouvrirReattribution(dossier: any): void {
+    if (!this.peutChoisirAgent()) return;
+    this.reattribution = dossier;
+    this.reattributionId = dossier.user_id ?? dossier.user?.id ?? '';
+    this.reattributionError = '';
+    this.cdr.detectChanges();
+  }
+
+  fermerReattribution(): void {
+    this.reattribution = null;
+    this.reattributionError = '';
+    this.agentBusy = false;
+    this.cdr.detectChanges();
+  }
+
+  choisirReattribution(id: any): void {
+    this.reattributionId = id;
+    this.cdr.detectChanges();
+  }
+
+  confirmerReattribution(): void {
+    if (!this.reattribution || this.agentBusy || !this.reattributionId) return;
+    this.agentBusy = true;
+    this.reattributionError = '';
+    this.cdr.detectChanges();
+    this.api.put('ventes', this.reattribution.id, { user_id: this.reattributionId }).subscribe({
+      next: () => {
+        this.agentBusy = false;
+        this.reattribution = null;
+        this.successMsg = 'Dossier attribué à ' + this.agentNomParId(this.reattributionId) + '.';
+        this.loadVentes();
+        setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 3000);
+      },
+      error: (err: any) => {
+        this.agentBusy = false;
+        this.reattributionError = err?.error?.message || 'Impossible de changer l’agent.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   // ---------- Libellés ----------
@@ -133,6 +286,7 @@ export class VentesComponent implements OnInit {
     this.cdr.detectChanges();
 
     const params: any = { page: this.currentPage };
+    if (this.filterAgent) params.agent_id = this.filterAgent;
     if (this.searchTerm) params.q = this.searchTerm;
     if (this.filterStatut) params.statut = this.filterStatut;
 
@@ -200,6 +354,7 @@ export class VentesComponent implements OnInit {
 
   emptyForm(): any {
     return {
+      user_id: '',
       prix_vente: '',
       date_vente: new Date().toISOString().slice(0, 10), // aujourd'hui par défaut
       mode_paiement: 'especes',

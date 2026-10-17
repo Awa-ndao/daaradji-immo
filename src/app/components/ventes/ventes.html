@@ -47,6 +47,33 @@
             (click)="setStatut(s.value)">{{ s.label }}</button>
         }
       </div>
+
+      <!-- Filtre par agent (direction) -->
+      @if (voitTousLesDossiers()) {
+        <div class="pick pick--filtre">
+          <button type="button" class="pick__btn" [class.pick__btn--open]="agentFiltreOuvert"
+            aria-haspopup="listbox" [attr.aria-expanded]="agentFiltreOuvert" (click)="toggleAgentFiltre()">
+            <i class="bi bi-person-badge"></i>
+            <span>{{ agentFiltreLabel() }}</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          @if (agentFiltreOuvert) {
+            <div class="pick__veil" (click)="toggleAgentFiltre()"></div>
+            <div class="pick__menu" role="listbox" aria-label="Filtrer par agent">
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="!filterAgent"
+                (click)="setAgentFiltre('')"><span class="pick__txt">Tous les agents</span></button>
+              @for (a of agents; track a.id) {
+                <button type="button" class="pick__opt" role="option"
+                  [class.pick__opt--sel]="filterAgent == a.id" (click)="setAgentFiltre(a.id)">
+                  <span class="pick__txt">{{ agentLibelle(a) }}</span>
+                </button>
+              }
+              <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="filterAgent === 'aucun'"
+                (click)="setAgentFiltre('aucun')"><span class="pick__txt">Non attribués</span></button>
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Tableau -->
@@ -62,15 +89,16 @@
               <th class="num">Part agent</th>
               <th>Date</th>
               <th>Statut</th>
+              @if (voitTousLesDossiers()) { <th>Agent</th> }
               <th><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             @if (!loaded) {
-              <tr><td colspan="8" class="empty">Chargement des ventes…</td></tr>
+              <tr><td [attr.colspan]="voitTousLesDossiers() ? 9 : 8" class="empty">Chargement des ventes…</td></tr>
             } @else if (ventes.length === 0) {
               <tr>
-                <td colspan="8" class="empty">
+                <td [attr.colspan]="voitTousLesDossiers() ? 9 : 8" class="empty">
                   <i class="bi bi-tag"></i>
                   Aucune vente ne correspond à ces critères.
                 </td>
@@ -101,6 +129,16 @@
                 </td>
                 <td class="soft">{{ v.date_vente | date:'dd/MM/yyyy' }}</td>
                 <td><span class="st" [ngClass]="'st--' + v.statut">{{ statutLabel(v.statut) }}</span></td>
+                @if (voitTousLesDossiers()) {
+                  <td>
+                    <button type="button" class="agent" [class.agent--none]="agentNom(v) === 'Non attribué'"
+                      (click)="ouvrirReattribution(v)" [title]="agentNom(v) + ' · cliquer pour changer d’agent'">
+                      <span class="agent__ini">{{ agentInitiales(v) }}</span>
+                      <span class="agent__nom">{{ agentCourt(v) }}</span>
+                      <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                  </td>
+                }
                 <td>
                   <div class="acts">
                     @if (v.statut === 'en_cours') {
@@ -166,6 +204,7 @@
               <i class="bi bi-exclamation-circle"></i> {{ errorMsg }}
             </div>
           }
+
 
           <!-- Client -->
           <div>
@@ -345,6 +384,40 @@
         <button type="button" class="btn-danger" (click)="confirmPending()" [disabled]="working">
           <i class="bi" [ngClass]="pendingText().icon"></i>
           {{ working ? 'Un instant…' : pendingText().action }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Changer l'agent d'un dossier -->
+@if (reattribution) {
+  <div class="veil" (click)="fermerReattribution()">
+    <div class="confirm" role="dialog" aria-modal="true" aria-labelledby="reattr-title"
+      (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-person-badge"></i></div>
+      <h2 class="confirm__title" id="reattr-title">Agent responsable</h2>
+      <p class="confirm__text">Choisissez l’agent qui suit ce dossier. Il le verra dans sa liste ; l’ancien agent ne le verra plus.</p>
+      <div class="agents-list" role="radiogroup" aria-labelledby="reattr-title">
+        @for (a of agents; track a.id) {
+          <button type="button" class="agent-opt" role="radio"
+            [class.agent-opt--on]="reattributionId == a.id" [attr.aria-checked]="reattributionId == a.id"
+            (click)="choisirReattribution(a.id)">
+            <span class="agent__ini">{{ (a.name || '?').charAt(0).toUpperCase() }}</span>
+            {{ agentLibelle(a) }}
+            @if (reattributionId == a.id) { <i class="bi bi-check2"></i> }
+          </button>
+        } @empty {
+          <p class="soft">Aucun agent actif.</p>
+        }
+      </div>
+      @if (reattributionError) {
+        <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ reattributionError }}</div>
+      }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="fermerReattribution()">Retour</button>
+        <button type="button" class="btn-danger" (click)="confirmerReattribution()" [disabled]="agentBusy || !reattributionId">
+          {{ agentBusy ? 'Un instant…' : 'Enregistrer' }}
         </button>
       </div>
     </div>
