@@ -6,9 +6,12 @@ use App\Models\Vente;
 use App\Models\Bien;
 use App\Models\Commission;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Concerns\PorteeAgent;
 
 class VenteController extends Controller
 {
+    use PorteeAgent;
+
     public function index(Request $request)
     {
         $query = Vente::with(['client', 'bien', 'user']);
@@ -17,16 +20,21 @@ class VenteController extends Controller
             $query->where('statut', $request->statut);
         }
         if ($request->q) {
-            $query->whereHas('client', function($q) use ($request) {
-                $q->where('nom', 'like', '%' . $request->q . '%')
-                  ->orWhere('prenom', 'like', '%' . $request->q . '%');
-            })->orWhereHas('bien', function($q) use ($request) {
-                $q->where('reference', 'like', '%' . $request->q . '%')
-                  ->orWhere('localisation', 'like', '%' . $request->q . '%');
+            // Entre parenthèses, sinon le « ou » annule les autres filtres
+            $query->where(function ($w) use ($request) {
+                $w->whereHas('client', function ($q) use ($request) {
+                    $q->where('nom', 'like', '%' . $request->q . '%')
+                      ->orWhere('prenom', 'like', '%' . $request->q . '%');
+                })->orWhereHas('bien', function ($q) use ($request) {
+                    $q->where('reference', 'like', '%' . $request->q . '%')
+                      ->orWhere('localisation', 'like', '%' . $request->q . '%');
+                });
             });
         }
+        $this->filtrerParAgent($query, $request);
 
-        return response()->json($query->latest()->paginate(10));
+        $parPage = min((int) ($request->per_page ?: 10), 100);
+        return response()->json($query->latest()->paginate($parPage));
     }
 
     public function store(Request $request)
@@ -75,7 +83,7 @@ class VenteController extends Controller
             'montant_reverse'   => $montantReverse,
             'client_id'         => $request->client_id,
             'bien_id'           => $request->bien_id,
-            'user_id'           => auth()->id(),
+            'user_id'           => auth()->id(), // celui qui enregistre le dossier en est responsable
         ]);
 
         // Créer la commission
@@ -85,7 +93,7 @@ class VenteController extends Controller
             'type_transaction' => 'vente',
             'statut'           => 'en_attente',
             'vente_id'         => $vente->id,
-            'user_id'          => auth()->id(),
+            'user_id'          => $vente->user_id,
         ]);
 
         // Marquer le bien comme vendu
@@ -96,6 +104,7 @@ class VenteController extends Controller
 
     public function show(Vente $vente)
     {
+        $this->verifierAgent($vente);
         return response()->json(
             $vente->load(['client', 'bien', 'user', 'contrat', 'factures', 'commission'])
         );
@@ -103,17 +112,22 @@ class VenteController extends Controller
 
     public function update(Request $request, Vente $vente)
     {
-        $vente->update($request->all());
+        $this->verifierAgent($vente);
+        $vente->update($this->champsModifiables($request));
+        if ($vente->wasChanged('user_id')) {
+            $vente->commission?->update(['user_id' => $vente->user_id]);
+        }
 
         if ($request->statut === 'annule') {
             $vente->bien->update(['statut' => 'disponible']);
         }
 
-        return response()->json($vente);
+        return response()->json($vente->load(['client', 'bien', 'user']));
     }
 
     public function destroy(Vente $vente)
     {
+        $this->verifierAgent($vente);
         $vente->bien->update(['statut' => 'disponible']);
         $vente->delete();
         return response()->json(['message' => 'Vente supprimée avec succès']);
