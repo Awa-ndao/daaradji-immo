@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { ApiService } from '../../services/api';
 import { AuthService } from '../../services/auth';
 import { SidebarComponent } from '../sidebar/sidebar';
+import { API_URL } from '../../services/config';
 
 /**
  * Corbeille : tout ce qui a été supprimé peut être restauré par la direction.
@@ -17,7 +18,7 @@ import { SidebarComponent } from '../sidebar/sidebar';
   styleUrl: '../shared/module.css'
 })
 export class CorbeilleComponent implements OnInit {
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = API_URL;
   elements: any[] = [];
   loaded = false;
   filterType = '';

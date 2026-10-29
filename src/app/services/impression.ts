@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { API_URL } from './config';
 
 /**
  * Impression des factures, reçus, contrats et bulletins de salaire.
@@ -9,7 +10,7 @@ import { HttpClient } from '@angular/common/http';
  */
 @Injectable({ providedIn: 'root' })
 export class ImpressionService {
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = API_URL;
 
   constructor(private http: HttpClient) {}
 
