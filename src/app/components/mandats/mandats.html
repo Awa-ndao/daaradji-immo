@@ -1,0 +1,250 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Mandats</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()"><i class="bi bi-plus-lg"></i> Nouveau mandat</button>
+    </div>
+
+    @if (successMsg) { <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div> }
+
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un bien, un propriétaire…" aria-label="Rechercher un mandat"
+          autocomplete="off" [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (t of statutTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterStatut === t.value"
+            [attr.aria-pressed]="filterStatut === t.value" (click)="setStatut(t.value)">{{ t.label }}</button>
+        }
+      </div>
+      @if (direction()) {
+        <div class="pick pick--filtre">
+          <button type="button" class="pick__btn" [class.pick__btn--open]="agentFiltreOuvert" aria-haspopup="listbox"
+            [attr.aria-expanded]="agentFiltreOuvert" (click)="toggleAgentFiltre()">
+            <i class="bi bi-person-badge"></i><span>{{ agentFiltreLabel() }}</span><i class="bi bi-chevron-down"></i>
+          </button>
+          @if (agentFiltreOuvert) {
+            <div class="pick__veil" (click)="toggleAgentFiltre()"></div>
+            <div class="pick__menu" role="listbox" aria-label="Filtrer par agent">
+              <button type="button" class="pick__opt" [class.pick__opt--sel]="!filterAgent" (click)="setAgentFiltre('')"><span class="pick__txt">Tous les agents</span></button>
+              @for (a of agents; track a.id) {
+                <button type="button" class="pick__opt" [class.pick__opt--sel]="filterAgent == a.id" (click)="setAgentFiltre(a.id)"><span class="pick__txt">{{ a.name }}</span></button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Bien confié</th>
+              <th>Propriétaire</th>
+              <th>Type</th>
+              <th>Période</th>
+              <th class="num">Taux</th>
+              <th>Statut</th>
+              @if (direction()) { <th>Agent</th> }
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td [attr.colspan]="direction() ? 8 : 7" class="empty">Chargement…</td></tr>
+            } @else if (mandats.length === 0) {
+              <tr><td [attr.colspan]="direction() ? 8 : 7" class="empty"><i class="bi bi-file-earmark-check"></i>
+                @if (searchTerm || filterStatut || filterAgent) { Aucun mandat ne correspond. } @else { Aucun mandat pour l'instant. }
+              </td></tr>
+            }
+            @for (m of mandats; track m.id) {
+              <tr>
+                <td><span class="cell2"><b>{{ bienTexte(m.bien) }}</b><small>Réf. {{ m.bien?.reference }}</small></span></td>
+                <td>
+                  <span class="cell2">
+                    <span>{{ nomPt(m.proprietaire_tiers) }}</span>
+                    @if (m.proprietaire_tiers?.type === 'agence') { <small><span class="tag tag--or">Agence · 50/50</span></small> }
+                  </span>
+                </td>
+                <td><span class="tag">{{ typeLabel(m.type) }}</span></td>
+                <td class="soft">{{ m.date_debut | date:'dd/MM/yyyy' }} → {{ m.date_fin ? (m.date_fin | date:'dd/MM/yyyy') : 'sans fin' }}</td>
+                <td class="num">{{ m.taux_commission }} %</td>
+                <td><span class="st" [ngClass]="'st--' + m.statut">{{ statutLabel(m.statut) }}</span></td>
+                @if (direction()) {
+                  <td><span class="agent agent--static" [class.agent--none]="!m.user"><span class="agent__ini">{{ (agentNom(m)).charAt(0) }}</span><span class="agent__nom">{{ agentNom(m).split(' ')[0] }}</span></span></td>
+                }
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="edit(m)" aria-label="Modifier le mandat" title="Modifier"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="act act--del" (click)="askDelete(m)" aria-label="Supprimer le mandat" title="Supprimer"><i class="bi bi-trash3"></i></button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" aria-label="Page précédente"><i class="bi bi-chevron-left"></i></button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" aria-label="Page suivante"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </div>
+  </main>
+</div>
+
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="md-title" (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="save()" autocomplete="off" novalidate>
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="md-title">{{ editingId ? 'Modifier le mandat' : 'Nouveau mandat' }}</h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) { <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div> }
+
+          <div class="full">
+            <span class="lab" id="md-agent">Agent responsable</span>
+            <div class="agent-fixe" aria-labelledby="md-agent">
+              <span class="agent__ini">{{ agentFixeLabel().charAt(0) }}</span>
+              <span class="agent-fixe__nom">{{ agentFixeLabel() }}</span>
+              <i class="bi bi-lock" title="Fixé automatiquement : non modifiable"></i>
+            </div>
+          </div>
+
+          @if (!editingId) {
+            <div>
+              <span class="lab" id="md-pt">Propriétaire tiers (mandant) <em>*</em></span>
+              <div class="pick">
+                <button type="button" class="pick__btn" [class.pick__btn--open]="pickerPt" aria-haspopup="listbox"
+                  aria-labelledby="md-pt" [attr.aria-expanded]="pickerPt" (click)="pickerPt = !pickerPt">
+                  <span [class.pick__ph]="!ptChoisi()">{{ ptChoisi() ? nomPt(ptChoisi()) : 'Choisir le propriétaire' }}</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                @if (pickerPt) {
+                  <div class="pick__veil" (click)="pickerPt = false"></div>
+                  <div class="pick__menu" role="listbox" aria-labelledby="md-pt">
+                    @for (p of proprietaires; track p.id) {
+                      <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="sameId(form.proprietaire_tiers_id, p.id)" (click)="pickPt(p)">
+                        <span class="pick__txt"><b>{{ nomPt(p) }}</b> {{ p.type === 'agence' ? '· agence' : '' }}</span>
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun propriétaire. Ajoutez-le d’abord dans « Propriétaires tiers ».</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div>
+              <span class="lab" id="md-bien">Bien confié <em>*</em></span>
+              <div class="pick">
+                <button type="button" class="pick__btn" [class.pick__btn--open]="pickerBien" aria-haspopup="listbox"
+                  aria-labelledby="md-bien" [attr.aria-expanded]="pickerBien" [disabled]="!form.proprietaire_tiers_id"
+                  (click)="pickerBien = !pickerBien">
+                  <span [class.pick__ph]="!bienChoisi()">{{ bienChoisi() ? bienTexte(bienChoisi()) : (form.proprietaire_tiers_id ? 'Choisir le bien' : 'Choisissez d’abord le propriétaire') }}</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                @if (pickerBien) {
+                  <div class="pick__veil" (click)="pickerBien = false"></div>
+                  <div class="pick__menu" role="listbox" aria-labelledby="md-bien">
+                    @for (b of biensProposes(); track b.id) {
+                      <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="sameId(form.bien_id, b.id)" (click)="pickBien(b)">
+                        <span class="pick__txt"><b>{{ b.reference }}</b> {{ bienTexte(b) }}</span>
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun bien pour ce propriétaire. Enregistrez d’abord le bien dans « Biens » comme « confié ».</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="full note note--vert"><i class="bi bi-house-check"></i>
+              <span>{{ bienTexte(bienChoisi()) }} — confié par {{ nomPt(ptChoisi()) }}</span></div>
+          }
+
+          <div class="full">
+            <span class="lab" id="md-type">Type de mandat <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="md-type">
+              @for (t of types; track t.value) {
+                <button type="button" [class.on]="form.type === t.value" [attr.aria-pressed]="form.type === t.value"
+                  (click)="choose('type', t.value)"><i class="bi" [ngClass]="t.icon"></i>{{ t.label }}</button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="lab" for="md-debut">Date de début <em>*</em></label>
+            <div class="inp"><input id="md-debut" type="date" [(ngModel)]="form.date_debut" name="date_debut" required></div>
+          </div>
+          <div>
+            <label class="lab" for="md-fin">Date de fin</label>
+            <div class="inp"><input id="md-fin" type="date" [(ngModel)]="form.date_fin" name="date_fin"></div>
+          </div>
+          <div>
+            <label class="lab" for="md-taux">Taux de commission négocié <em>*</em></label>
+            <div class="inp"><input id="md-taux" type="number" min="0" max="100" step="0.5" [(ngModel)]="form.taux_commission" name="taux_commission"><span>%</span></div>
+          </div>
+          @if (editingId) {
+            <div>
+              <span class="lab" id="md-statut">Statut</span>
+              <div class="seg" role="group" aria-labelledby="md-statut">
+                @for (s of statuts; track s.value) {
+                  <button type="button" [class.on]="form.statut === s.value" [attr.aria-pressed]="form.statut === s.value" (click)="choose('statut', s.value)">{{ s.label }}</button>
+                }
+              </div>
+            </div>
+          }
+          <div class="full">
+            <label class="lab" for="md-cond">Conditions particulières</label>
+            <div class="inp inp--area"><textarea id="md-cond" rows="3" placeholder="Ex. : prix minimum accepté, visites le samedi…" [(ngModel)]="form.conditions" name="conditions"></textarea></div>
+          </div>
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving"><i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer le mandat') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (aSupprimer) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="del-title">Supprimer ce mandat ?</h2>
+      <p class="confirm__text">Mandat de {{ typeLabel(aSupprimer.type).toLowerCase() }} — {{ bienTexte(aSupprimer.bien) }}. Il ira dans la corbeille.</p>
+      @if (deleteError) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ deleteError }}</div> }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting"><i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}</button>
+      </div>
+    </div>
+  </div>
+}

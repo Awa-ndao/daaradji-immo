@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api';
 import { SidebarComponent } from '../sidebar/sidebar';
+import { ImpressionService } from '../../services/impression';
 
 @Component({
   selector: 'app-paiements',
@@ -64,8 +65,18 @@ export class PaiementsComponent implements OnInit {
 
   constructor(
     private api: ApiService,
+    private impression: ImpressionService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  // Ouvre le document à l'en-tête de l'agence et lance l'impression (ou « Enregistrer au format PDF »)
+  imprimer(element: any): void {
+    this.errorMsg = '';
+    this.impression.imprimer('recu', element.id, (msg: string) => {
+      this.errorMsg = msg;
+      this.cdr.detectChanges();
+    });
+  }
 
   ngOnInit(): void {
     this.loadPaiements();

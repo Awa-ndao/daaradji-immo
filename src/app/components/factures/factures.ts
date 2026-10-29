@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api';
 import { SidebarComponent } from '../sidebar/sidebar';
+import { ImpressionService } from '../../services/impression';
 
 type Action = 'payee' | 'delete';
 
@@ -64,8 +65,18 @@ export class FacturesComponent implements OnInit {
 
   constructor(
     private api: ApiService,
+    private impression: ImpressionService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  // Ouvre le document à l'en-tête de l'agence et lance l'impression (ou « Enregistrer au format PDF »)
+  imprimer(element: any): void {
+    this.errorMsg = '';
+    this.impression.imprimer('facture', element.id, (msg: string) => {
+      this.errorMsg = msg;
+      this.cdr.detectChanges();
+    });
+  }
 
   ngOnInit(): void {
     this.loadFactures();
@@ -365,9 +376,24 @@ export class FacturesComponent implements OnInit {
         this.form.etape_construction_id = ''; // nouveau chantier : on rechoisit l'étape
       }
       this.form[key] = id;
+      this.proposerMontant(key, id);
     }
     this.openPicker = false;
     this.cdr.detectChanges();
+  }
+
+  // Nouvelle facture : on propose le montant de l'opération (prix de vente, loyer ou caution).
+  // Le serveur refuse ensuite un total facturé supérieur au prix, à la caution ou au chantier.
+  private proposerMontant(key: string, id: any): void {
+    if (this.editingId) return;
+    if (key === 'vente_id') {
+      const v = this.ventes.find((x: any) => this.sameId(x.id, id));
+      if (v?.prix_vente) this.form.montant = Number(v.prix_vente);
+    } else if (key === 'location_id') {
+      const l = this.locations.find((x: any) => this.sameId(x.id, id));
+      const m = this.form.type === 'caution' ? l?.caution : l?.loyer_mensuel;
+      if (Number(m) > 0) this.form.montant = Number(m);
+    }
   }
 
   // ---------- Étape du chantier (factures de construction) ----------

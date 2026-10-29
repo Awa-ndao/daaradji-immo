@@ -134,6 +134,24 @@ export class LocationsComponent implements OnInit {
     return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
   }
 
+  // ---------- Agent responsable affiché (fixé) dans le formulaire ----------
+  // Nouveau dossier : la personne connectée. Modification : l'agent déjà enregistré.
+  agentFixeLabel(): string {
+    const moi = this.auth.getUser();
+    const id = this.form?.user_id;
+    if (!id || (moi && String(id) === String(moi.id))) {
+      return (moi?.name || '') + ' (vous)';
+    }
+    return this.agentNomParId(id) || 'Non attribué';
+  }
+
+  agentFixeInitiales(): string {
+    const nom = this.agentFixeLabel().replace(/ \(vous\)$/, '').replace(/ · .*$/, '').replace(/^Moi \(|\)$/g, '').trim();
+    const p = nom.split(/\s+/).filter(Boolean);
+    if (!p.length || nom === 'Non attribué') return '?';
+    return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+  }
+
   // ---------- Filtre par agent ----------
 
   agentFiltreLabel(): string {

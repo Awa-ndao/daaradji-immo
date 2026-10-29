@@ -16,6 +16,13 @@ export const ACCES: Record<string, Role[]> = {
   contrats: [...DIRECTION, 'agent'],
   factures: [...DIRECTION, 'comptable'],
   paiements: [...DIRECTION, 'comptable'],
+  proprietaires: [...DIRECTION, 'agent'],
+  mandats: [...DIRECTION, 'agent'],
+  demarches: [...DIRECTION, 'agent'],
+  commissions: [...DIRECTION, 'comptable'],
+  salaires: [...DIRECTION, 'comptable'],
+  journal: DIRECTION,
+  corbeille: DIRECTION,
   utilisateurs: DIRECTION
 };
 

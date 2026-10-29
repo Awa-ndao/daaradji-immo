@@ -1,0 +1,65 @@
+/* Sélecteur de mois */
+.mois-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mois-bar__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 190px;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid #E3E4DC;
+  border-radius: 10px;
+  background: #fff;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0B4D2A;
+}
+.mois-bar__label i { color: #0F6B3A; }
+.mois-bar__today {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0F6B3A;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Rappel : employés sans salaire ce mois */
+.note--action {
+  align-items: center;
+  margin-bottom: 14px;
+}
+.note--action span { flex: 1; }
+.btn-sm {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* Aperçu du net dans le formulaire */
+.apercu {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-left: 4px solid #D4A017;
+  border-radius: 10px;
+  background: #E8F2EB;
+}
+.apercu span { color: #0B4D2A; font-weight: 500; }
+.apercu b {
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  font-size: 20px;
+  color: #0B4D2A;
+}
+.apercu b.neg { color: #B3261E; }

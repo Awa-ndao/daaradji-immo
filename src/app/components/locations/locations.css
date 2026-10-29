@@ -903,3 +903,23 @@ button { font: inherit; }
 .table-scroll::-webkit-scrollbar-track { background: transparent; }
 .table-scroll::-webkit-scrollbar-thumb { background: #C9CCC4; border-radius: 999px; }
 .table-scroll::-webkit-scrollbar-thumb:hover { background: #0F6B3A; }
+
+/* Agent responsable fixé dans le formulaire (non modifiable) */
+.agent-fixe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px 0 8px;
+  border: 1.5px solid #E3E4DC;
+  border-radius: 10px;
+  background: #F4F5F1;
+  color: #3A443E;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+}
+
+.agent-fixe .agent__ini { width: 28px; height: 28px; font-size: 11px; }
+.agent-fixe__nom { flex: 1; }
+.agent-fixe > i { color: #8A938D; }

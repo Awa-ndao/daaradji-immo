@@ -1,0 +1,130 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Journal d’activité</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" role="group" aria-label="Filtrer par action">
+        @for (a of actions; track a.value) {
+          <button type="button" class="tab" [class.tab--on]="filterAction === a.value" [attr.aria-pressed]="filterAction === a.value" (click)="setAction(a.value)">{{ a.label }}</button>
+        }
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="pick pick--filtre">
+        <button type="button" class="pick__btn" [class.pick__btn--open]="pickUser" aria-haspopup="listbox" [attr.aria-expanded]="pickUser" (click)="pickUser = !pickUser">
+          <i class="bi bi-person"></i><span>{{ userLabel() }}</span><i class="bi bi-chevron-down"></i>
+        </button>
+        @if (pickUser) {
+          <div class="pick__veil" (click)="pickUser = false"></div>
+          <div class="pick__menu" role="listbox" aria-label="Filtrer par utilisateur">
+            <button type="button" class="pick__opt" [class.pick__opt--sel]="!filterUser" (click)="setUser('')"><span class="pick__txt">Tous les utilisateurs</span></button>
+            @for (u of utilisateurs; track u.id) {
+              <button type="button" class="pick__opt" [class.pick__opt--sel]="filterUser == u.id" (click)="setUser(u.id)"><span class="pick__txt">{{ u.name }} · {{ roleLabel(u.role) }}</span></button>
+            }
+          </div>
+        }
+      </div>
+      <div class="pick pick--filtre">
+        <button type="button" class="pick__btn" [class.pick__btn--open]="pickTable" aria-haspopup="listbox" [attr.aria-expanded]="pickTable" (click)="pickTable = !pickTable">
+          <i class="bi bi-folder2"></i><span>{{ filterTable ? tables[filterTable] : 'Tous les éléments' }}</span><i class="bi bi-chevron-down"></i>
+        </button>
+        @if (pickTable) {
+          <div class="pick__veil" (click)="pickTable = false"></div>
+          <div class="pick__menu" role="listbox" aria-label="Filtrer par élément">
+            <button type="button" class="pick__opt" [class.pick__opt--sel]="!filterTable" (click)="setTable('')"><span class="pick__txt">Tous les éléments</span></button>
+            @for (k of tableKeys(); track k) {
+              <button type="button" class="pick__opt" [class.pick__opt--sel]="filterTable === k" (click)="setTable(k)"><span class="pick__txt">{{ tables[k] }}</span></button>
+            }
+          </div>
+        }
+      </div>
+      <div class="dates">
+        <label class="sr-only" for="jr-du">Du</label>
+        <div class="inp"><input id="jr-du" type="date" [(ngModel)]="du" name="du" (change)="filtrer()" aria-label="Depuis le"></div>
+        <span>au</span>
+        <div class="inp"><input id="jr-au" type="date" [(ngModel)]="au" name="au" (change)="filtrer()" aria-label="Jusqu’au"></div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date et heure</th>
+              <th>Utilisateur</th>
+              <th>Action</th>
+              <th>Élément</th>
+              <th>Adresse IP</th>
+              <th><span class="sr-only">Détail</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="6" class="empty">Chargement…</td></tr>
+            } @else if (logs.length === 0) {
+              <tr><td colspan="6" class="empty"><i class="bi bi-journal-text"></i> Aucune action pour ces critères.</td></tr>
+            }
+            @for (l of logs; track l.id) {
+              <tr [class.row-open]="ouvert === l.id">
+                <td class="soft">{{ l.created_at | date:'dd/MM/yyyy à HH:mm' }}</td>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initiales(l.user?.name) }}</span>
+                    <span class="cell2"><span class="who__name">{{ l.user?.name || '—' }}</span><small>{{ roleLabel(l.user?.role) }}</small></span>
+                  </span>
+                </td>
+                <td><span class="tag" [ngClass]="actionClasse(l.action)">{{ l.action }}</span></td>
+                <td>{{ element(l) }}</td>
+                <td class="ip">{{ l.ip_adresse || '—' }}</td>
+                <td>
+                  @if (details(l).length) {
+                    <button type="button" class="toggle" (click)="basculer(l.id)" [attr.aria-expanded]="ouvert === l.id">
+                      {{ ouvert === l.id ? 'Masquer' : 'Voir le détail' }}</button>
+                  }
+                </td>
+              </tr>
+              @if (ouvert === l.id) {
+                <tr class="detail">
+                  <td colspan="6">
+                    <table class="diff">
+                      <thead><tr><th>Champ</th>@if (l.ancienne_valeur) { <th>Avant</th> }@if (l.nouvelle_valeur) { <th>Après</th> }</tr></thead>
+                      <tbody>
+                        @for (d of details(l); track d.champ) {
+                          <tr><td>{{ d.champ }}</td>
+                            @if (l.ancienne_valeur) { <td class="old">{{ d.avant }}</td> }
+                            @if (l.nouvelle_valeur) { <td class="new">{{ d.apres }}</td> }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" aria-label="Page précédente"><i class="bi bi-chevron-left"></i></button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" aria-label="Page suivante"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </div>
+  </main>
+</div>

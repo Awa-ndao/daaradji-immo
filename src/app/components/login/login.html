@@ -1,4 +1,4 @@
-<main class="login">
+﻿<main class="login">
 
   <!-- Panneau marque : la ligne de toit du logo, en grand -->
   <section class="brand">
@@ -43,7 +43,7 @@
         <label class="field">
           <span class="field__label">Adresse e-mail</span>
           <input class="field__input" type="email" name="email" [(ngModel)]="email"
-                 placeholder="prenom@daaradji.sn" autocomplete="username" required />
+                 autocomplete="username" required />
         </label>
 
         <label class="field">
@@ -70,7 +70,9 @@
           </span>
         </label>
 
-        <a class="form__forgot" href="#">Mot de passe oublié ?</a>
+        <button class="form__forgot" type="button" (click)="motDePasseOublie()">Mot de passe oublié ?</button>
+
+        <p class="form__info" *ngIf="infoMessage" role="status">{{ infoMessage }}</p>
 
         <button class="form__submit" type="submit" [disabled]="loading">
           {{ loading ? 'Connexion en cours…' : 'Se connecter' }}

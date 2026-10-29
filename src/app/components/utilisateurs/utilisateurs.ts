@@ -199,7 +199,7 @@ export class UtilisateursComponent implements OnInit {
   // ---------- Formulaire ----------
 
   emptyForm(): any {
-    return { name: '', email: '', password: '', role: '', statut: 'actif' };
+    return { name: '', email: '', password: '', role: '', statut: 'actif', salaire_base: '' };
   }
 
   openNew(): void {
@@ -264,6 +264,7 @@ export class UtilisateursComponent implements OnInit {
     this.cdr.detectChanges();
 
     const donnees: any = { ...this.form, email };
+    if (donnees.role === 'proprietaire' || donnees.salaire_base === '' || donnees.salaire_base === null) donnees.salaire_base = null;
     if (modification && !mdp) delete donnees.password; // mot de passe inchangé
 
     const request = modification
@@ -290,7 +291,8 @@ export class UtilisateursComponent implements OnInit {
   editUtilisateur(u: any): void {
     this.resetForm();
     this.editingId = u.id;
-    this.form = { name: u.name || '', email: u.email || '', password: '', role: u.role || '', statut: u.statut || 'actif' };
+    this.form = { name: u.name || '', email: u.email || '', password: '', role: u.role || '', statut: u.statut || 'actif',
+                  salaire_base: u.salaire_base ?? '' };
     this.showForm = true;
     this.cdr.detectChanges();
   }

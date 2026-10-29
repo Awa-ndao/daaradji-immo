@@ -279,6 +279,11 @@
 
 .form__forgot {
   align-self: flex-end;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
   margin-top: -8px;
   font-size: .9rem;
   font-weight: 500;
@@ -288,6 +293,15 @@
 }
 
 .form__forgot:hover { color: var(--vert-nuit); }
+
+.form__info {
+  margin: -4px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--or);
+  background: #FBF3DC;
+  color: var(--vert-nuit);
+  font-size: .92rem;
+}
 
 .form__submit {
   height: clamp(42px, 7vh, 48px);

@@ -108,6 +108,10 @@
                 <td><span class="st" [ngClass]="'st--' + p.statut">{{ statutLabel(p.statut) }}</span></td>
                 <td>
                   <div class="acts">
+                    <button type="button" class="act" (click)="imprimer(p)"
+                      aria-label="Imprimer le reçu" title="Imprimer le reçu">
+                      <i class="bi bi-printer"></i>
+                    </button>
                     <button type="button" class="act" (click)="editPaiement(p)"
                       aria-label="Modifier le paiement" title="Modifier">
                       <i class="bi bi-pencil"></i>
@@ -300,7 +304,7 @@
       <p class="confirm__text" id="confirm-text">
         {{ nombre(pending.montant) }} FCFA en {{ modeLabel(pending.mode_paiement) | lowercase }}
         @if (factureDe(pending)?.numero) { pour la facture {{ factureDe(pending)?.numero }} }.
-        Cette suppression est définitive.
+        L’élément ira dans la corbeille : la direction pourra le restaurer.
       </p>
       @if (pendingError) {
         <div class="msg msg--err" role="alert">

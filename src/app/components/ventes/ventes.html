@@ -86,7 +86,7 @@
               <th>Bien</th>
               <th class="num">Prix de vente</th>
               <th class="num">Commission agence</th>
-              <th class="num">Part agent</th>
+              <th class="num">Reversé au propriétaire</th>
               <th>Date</th>
               <th>Statut</th>
               @if (voitTousLesDossiers()) { <th>Agent</th> }
@@ -205,6 +205,16 @@
             </div>
           }
 
+          <!-- Agent responsable : fixé (celui qui enregistre le dossier), non modifiable -->
+          <div class="full">
+            <span class="lab" id="agent-fixe-label">Agent responsable</span>
+            <div class="agent-fixe" aria-labelledby="agent-fixe-label">
+              <span class="agent__ini">{{ agentFixeInitiales() }}</span>
+              <span class="agent-fixe__nom">{{ agentFixeLabel() }}</span>
+              <i class="bi bi-lock" title="Fixé automatiquement : non modifiable"></i>
+            </div>
+          </div>
+
 
           <!-- Client -->
           <div>
@@ -266,20 +276,6 @@
             </div>
           </div>
 
-          <!-- Type de bien -->
-          <div class="full">
-            <span class="lab" id="vente-type-label">Type de bien <em>*</em></span>
-            <div class="seg" role="group" aria-labelledby="vente-type-label">
-              @for (t of typesBien; track t.value) {
-                <button type="button" [class.on]="form.type_bien === t.value"
-                  [attr.aria-pressed]="form.type_bien === t.value"
-                  (click)="choose('type_bien', t.value)">
-                  <i class="bi" [ngClass]="t.icon"></i>{{ t.label }}
-                </button>
-              }
-            </div>
-          </div>
-
           <div>
             <label class="lab" for="vente-prix">Prix de vente <em>*</em></label>
             <div class="inp">
@@ -311,39 +307,26 @@
             </div>
           </div>
 
-          @if (form.type_bien !== 'propre') {
-            <div>
-              <label class="lab" for="vente-commission">Commission totale</label>
-              <div class="inp">
-                <input id="vente-commission" type="number" min="0" placeholder="0" autocomplete="off"
-                  [(ngModel)]="form.commission_agence" name="commission_agence"
-                  (ngModelChange)="refresh()">
-                <span>FCFA</span>
+          <!-- Commission : calculée automatiquement à partir du mandat (bien confié) -->
+          @if (bienChoisi()) {
+            @if (bienChoisi().type_propriete !== 'confie') {
+              <div class="full split split--info">
+                <span class="split__title"><i class="bi bi-patch-check"></i> Bien propre de l’agence : pas de commission, le prix revient entièrement à l’agence.</span>
               </div>
-            </div>
-
-            @if (form.type_bien === 'confie_agent') {
-              <div>
-                <label class="lab" for="vente-agent">Nom de l'agent externe</label>
-                <div class="inp">
-                  <i class="bi bi-person"></i>
-                  <input id="vente-agent" type="text" placeholder="Prénom Nom" autocomplete="off"
-                    [(ngModel)]="form.nom_agent_externe" name="nom_agent_externe">
-                </div>
-              </div>
-
+            } @else if (mandatVente) {
               <div class="full split" aria-live="polite">
-                <span class="split__title">Répartition de la commission (50/50)</span>
+                <span class="split__title">Commission calculée automatiquement — mandat de vente à {{ mandatVente.taux_commission }} %{{ partenaire() ? ', partagée 50/50 avec l’agence partenaire' : '' }}</span>
                 <div class="split__row">
-                  <span class="split__part split__part--agence">
-                    <small>Agence</small>
-                    {{ nombre(getPartAgence()) }} FCFA
-                  </span>
-                  <span class="split__part split__part--agent">
-                    <small>Agent externe</small>
-                    {{ nombre(getPartAgent()) }} FCFA
-                  </span>
+                  <span class="split__part split__part--agence"><small>Part de l’agence</small>{{ nombre(getPartAgence()) }} FCFA</span>
+                  @if (partenaire()) {
+                    <span class="split__part split__part--agent"><small>Part de l’agence partenaire</small>{{ nombre(getPartPartenaire()) }} FCFA</span>
+                  }
+                  <span class="split__part"><small>Reversé à {{ nomMandant() }}</small>{{ nombre(montantReverse()) }} FCFA</span>
                 </div>
+              </div>
+            } @else if (mandatCharge) {
+              <div class="full split split--alerte">
+                <span class="split__title"><i class="bi bi-exclamation-triangle"></i> Ce bien est confié mais n’a pas de mandat de vente actif : enregistrez d’abord le mandat dans « Mandats ».</span>
               </div>
             }
           }

@@ -110,8 +110,8 @@
   display: grid;
   place-items: center;
   width: 44px;
-  /* la hauteur s'adapte pour que les 12 modules tiennent sans défilement */
-  height: clamp(28px, calc((100vh - 150px) / 12), 40px);
+  /* la hauteur s'adapte pour que tous les modules (jusqu’à 19) tiennent sans défilement */
+  height: clamp(24px, calc((100vh - 150px) / 19), 40px);
   padding: 0;
   border: 0;
   border-radius: 10px;

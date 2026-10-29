@@ -1,0 +1,13 @@
+.dates { display: flex; align-items: center; gap: 6px; }
+.dates .inp { height: 42px; }
+.dates span { font-size: 13px; color: #5F6B64; }
+.row-open td { background: #FAFBF8; }
+.detail td { background: #FAFBF8; padding-top: 0; }
+.diff { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-size: 12.5px; }
+.diff th { text-align: left; font-weight: 600; color: #5F6B64; padding: 4px 8px; background: transparent; }
+.diff td { padding: 4px 8px; border-top: 1px solid #ECEDE8; background: transparent; }
+.diff .old { color: #8C1D16; text-decoration: line-through; text-decoration-color: rgba(140, 29, 22, .35); }
+.diff .new { color: #0B5A30; font-weight: 600; }
+.ip { font-family: ui-monospace, monospace; font-size: 12px; color: #8A938D; }
+.toggle { border: 0; background: none; color: #0F6B3A; font-weight: 600; font-size: 12.5px; cursor: pointer; padding: 0; }
+.toggle:hover { text-decoration: underline; }

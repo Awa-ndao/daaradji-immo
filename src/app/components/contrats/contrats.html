@@ -141,6 +141,10 @@
                 }
                 <td>
                   <div class="acts">
+                    <button type="button" class="act" (click)="imprimer(c)"
+                      aria-label="Imprimer le contrat" title="Imprimer le contrat">
+                      <i class="bi bi-printer"></i>
+                    </button>
                     @if (c.statut === 'en_attente') {
                       <button type="button" class="act act--ok" (click)="ask('signe', c)"
                         aria-label="Marquer le contrat comme signé" title="Marquer comme signé">
@@ -320,7 +324,7 @@
       </h2>
       <p class="confirm__text" id="confirm-text">
         Contrat {{ pending.contrat.numero }} ({{ typeLabel(pending.contrat.type) | lowercase }}@if (concerne(pending.contrat); as q) {, {{ q.titre }}@if (q.label) { — {{ q.label }} } }).
-        {{ pending.action === 'signe' ? 'Son statut passera à « Signé ».' : 'Cette suppression est définitive.' }}
+        {{ pending.action === 'signe' ? 'Son statut passera à « Signé ».' : 'L’élément ira dans la corbeille : la direction pourra le restaurer.' }}
       </p>
       @if (pendingError) {
         <div class="msg msg--err" role="alert">

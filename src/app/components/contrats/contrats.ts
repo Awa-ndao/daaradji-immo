@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api';
 import { AuthService } from '../../services/auth';
 import { SidebarComponent } from '../sidebar/sidebar';
+import { ImpressionService } from '../../services/impression';
 
 type Action = 'signe' | 'delete';
 
@@ -75,9 +76,19 @@ export class ContratsComponent implements OnInit {
 
   constructor(
     private api: ApiService,
+    private impression: ImpressionService,
     private auth: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  // Ouvre le document à l'en-tête de l'agence et lance l'impression (ou « Enregistrer au format PDF »)
+  imprimer(element: any): void {
+    this.errorMsg = '';
+    this.impression.imprimer('contrat', element.id, (msg: string) => {
+      this.errorMsg = msg;
+      this.cdr.detectChanges();
+    });
+  }
 
   ngOnInit(): void {
     this.loadAgents();

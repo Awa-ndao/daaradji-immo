@@ -247,6 +247,16 @@
             }
           </div>
 
+          <!-- Salaire mensuel de base (le propriétaire n'est pas salarié ; l'administrateur ne fixe pas le sien) -->
+          @if (form.role && form.role !== 'proprietaire' && !(estAdmin() && editingId !== null && estMoi({ id: editingId }))) {
+            <div class="full">
+              <label class="lab" for="user-salaire">Salaire mensuel de base</label>
+              <div class="inp"><i class="bi bi-wallet2"></i>
+                <input id="user-salaire" type="number" min="0" placeholder="0" [(ngModel)]="form.salaire_base" name="salaire_base"><span>FCFA</span></div>
+              <p class="hint">Repris chaque mois par la comptable dans le module Salaires.</p>
+            </div>
+          }
+
           <!-- Statut (pas pour son propre compte) -->
           @if (editingId !== null && !estMoi({ id: editingId })) {
             <div class="full">

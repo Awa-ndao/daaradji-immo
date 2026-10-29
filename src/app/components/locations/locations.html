@@ -207,6 +207,16 @@
             </div>
           }
 
+          <!-- Agent responsable : fixé (celui qui enregistre le dossier), non modifiable -->
+          <div class="full">
+            <span class="lab" id="agent-fixe-label">Agent responsable</span>
+            <div class="agent-fixe" aria-labelledby="agent-fixe-label">
+              <span class="agent__ini">{{ agentFixeInitiales() }}</span>
+              <span class="agent-fixe__nom">{{ agentFixeLabel() }}</span>
+              <i class="bi bi-lock" title="Fixé automatiquement : non modifiable"></i>
+            </div>
+          </div>
+
 
           <!-- Locataire -->
           <div>
@@ -329,7 +339,7 @@
         {{ pending.location.bien?.reference }} loué à {{ pending.location.client?.prenom }} {{ pending.location.client?.nom }}.
         {{ pending.action === 'terminer'
             ? 'Le bien redeviendra disponible.'
-            : 'Cette suppression est définitive.' }}
+            : 'L’élément ira dans la corbeille : la direction pourra le restaurer.' }}
       </p>
 
       @if (pending.action === 'terminer') {

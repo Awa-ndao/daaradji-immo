@@ -1,0 +1,197 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Démarches administratives</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()"><i class="bi bi-plus-lg"></i> Nouvelle démarche</button>
+    </div>
+
+    @if (successMsg) { <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div> }
+
+    <div class="toolbar">
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (t of statutTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterStatut === t.value" [attr.aria-pressed]="filterStatut === t.value" (click)="setStatut(t.value)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Démarche</th>
+              <th>Dossier</th>
+              <th>Client</th>
+              <th>Période</th>
+              <th>Documents</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="7" class="empty">Chargement…</td></tr>
+            } @else if (demarches.length === 0) {
+              <tr><td colspan="7" class="empty"><i class="bi bi-folder2-open"></i> Aucune démarche pour l'instant.</td></tr>
+            }
+            @for (d of demarches; track d.id) {
+              <tr>
+                <td><span class="cell2"><b>{{ typeLabel(d.type) }}</b>@if (d.description) { <small>{{ d.description }}</small> }</span></td>
+                <td><span class="cell2"><span class="tag" [class.tag--or]="!!d.construction">{{ d.vente ? 'Vente' : 'Construction' }}</span><small>{{ bienTexte(operation(d)?.bien) }}</small></span></td>
+                <td>{{ nom(operation(d)?.client) }}</td>
+                <td class="soft">{{ d.date_debut | date:'dd/MM/yyyy' }}{{ d.date_fin ? ' → ' + (d.date_fin | date:'dd/MM/yyyy') : '' }}</td>
+                <td>
+                  @if (docsOf(d.documents).length) {
+                    <span class="docs">@for (x of docsOf(d.documents); track $index) { <span class="doc"><i class="bi bi-file-earmark-text"></i>{{ x }}</span> }</span>
+                  } @else { <span class="soft">—</span> }
+                </td>
+                <td><span class="st" [ngClass]="'st--' + d.statut">{{ statutLabel(d.statut) }}</span></td>
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="edit(d)" aria-label="Modifier la démarche" title="Modifier"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="act act--del" (click)="askDelete(d)" aria-label="Supprimer la démarche" title="Supprimer"><i class="bi bi-trash3"></i></button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" aria-label="Page précédente"><i class="bi bi-chevron-left"></i></button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" aria-label="Page suivante"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </div>
+  </main>
+</div>
+
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dm-title" (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="save()" autocomplete="off" novalidate>
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="dm-title">{{ editingId ? 'Modifier la démarche' : 'Nouvelle démarche' }}</h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="sheet__body">
+          @if (errorMsg) { <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div> }
+
+          @if (!editingId) {
+            <div class="full">
+              <span class="lab" id="dm-dossier">Démarche liée à <em>*</em></span>
+              <div class="seg" role="group" aria-labelledby="dm-dossier">
+                <button type="button" [class.on]="form.dossier === 'vente'" [attr.aria-pressed]="form.dossier === 'vente'" (click)="choose('dossier', 'vente')"><i class="bi bi-tag"></i>Une vente</button>
+                <button type="button" [class.on]="form.dossier === 'construction'" [attr.aria-pressed]="form.dossier === 'construction'" (click)="choose('dossier', 'construction')"><i class="bi bi-building"></i>Une construction</button>
+              </div>
+            </div>
+            <div class="full">
+              <span class="lab" id="dm-op">{{ form.dossier === 'vente' ? 'Vente concernée' : 'Construction concernée' }} <em>*</em></span>
+              <div class="pick">
+                <button type="button" class="pick__btn" [class.pick__btn--open]="pickerOp" aria-haspopup="listbox" aria-labelledby="dm-op"
+                  [attr.aria-expanded]="pickerOp" (click)="pickerOp = !pickerOp">
+                  <span [class.pick__ph]="!operationChoisie()">{{ operationChoisie() ? bienTexte(operationChoisie().bien) + ' · ' + nom(operationChoisie().client) : 'Choisir' }}</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                @if (pickerOp) {
+                  <div class="pick__veil" (click)="pickerOp = false"></div>
+                  <div class="pick__menu" role="listbox" aria-labelledby="dm-op">
+                    @for (o of operationsProposees(); track o.id) {
+                      <button type="button" class="pick__opt" role="option" [class.pick__opt--sel]="operationChoisie()?.id === o.id" (click)="pickOp(o)">
+                        <span class="pick__txt"><b>{{ o.bien?.reference }}</b> {{ bienTexte(o.bien) }} · {{ nom(o.client) }}</span>
+                      </button>
+                    } @empty {
+                      <p class="pick__empty">Aucun dossier disponible.</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="full note note--vert"><i class="bi bi-folder2-open"></i><span>Démarche liée à {{ form.dossier === 'vente' ? 'une vente' : 'une construction' }}.</span></div>
+          }
+
+          <div class="full">
+            <span class="lab" id="dm-type">Type de démarche <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="dm-type">
+              @for (t of types; track t.value) {
+                <button type="button" [class.on]="form.type === t.value" [attr.aria-pressed]="form.type === t.value" (click)="choose('type', t.value)">{{ t.label }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="lab" for="dm-debut">Date de début <em>*</em></label>
+            <div class="inp"><input id="dm-debut" type="date" [(ngModel)]="form.date_debut" name="date_debut" required></div>
+          </div>
+          <div>
+            <label class="lab" for="dm-fin">Date de fin</label>
+            <div class="inp"><input id="dm-fin" type="date" [(ngModel)]="form.date_fin" name="date_fin"></div>
+          </div>
+          @if (editingId) {
+            <div class="full">
+              <span class="lab" id="dm-statut">Statut</span>
+              <div class="seg" role="group" aria-labelledby="dm-statut">
+                @for (s of statuts; track s.value) {
+                  <button type="button" [class.on]="form.statut === s.value" [attr.aria-pressed]="form.statut === s.value" (click)="choose('statut', s.value)">{{ s.label }}</button>
+                }
+              </div>
+            </div>
+          }
+          <div class="full">
+            <label class="lab" for="dm-desc">Description</label>
+            <div class="inp inp--area"><textarea id="dm-desc" rows="2" placeholder="Ex. : dépôt au cadastre de Mbour" [(ngModel)]="form.description" name="description"></textarea></div>
+          </div>
+          <div class="full">
+            <span class="lab" id="dm-docs">Documents</span>
+            <div class="chips" role="group" aria-labelledby="dm-docs">
+              @for (x of documentsCourants; track x) {
+                <button type="button" class="chip" [class.chip--on]="docsChoisis.includes(x)" [attr.aria-pressed]="docsChoisis.includes(x)" (click)="toggleDoc(x)">
+                  <i class="bi" [class.bi-check2]="docsChoisis.includes(x)" [class.bi-plus]="!docsChoisis.includes(x)"></i>{{ x }}</button>
+              }
+            </div>
+          </div>
+          <div class="full">
+            <label class="lab" for="dm-autres">Autres documents</label>
+            <div class="inp"><i class="bi bi-file-earmark-text"></i><input id="dm-autres" type="text" placeholder="Séparez-les par des virgules" [(ngModel)]="autresDocs" name="autresDocs"></div>
+          </div>
+        </div>
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving"><i class="bi bi-check2"></i> {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer la démarche') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (aSupprimer) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="del-title">Supprimer cette démarche ?</h2>
+      <p class="confirm__text">{{ typeLabel(aSupprimer.type) }}. Elle ira dans la corbeille.</p>
+      @if (deleteError) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ deleteError }}</div> }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting"><i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}</button>
+      </div>
+    </div>
+  </div>
+}

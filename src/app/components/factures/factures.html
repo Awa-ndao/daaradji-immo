@@ -108,6 +108,10 @@
                 <td><span class="st" [ngClass]="'st--' + f.statut">{{ statutLabel(f.statut) }}</span></td>
                 <td>
                   <div class="acts">
+                    <button type="button" class="act" (click)="imprimer(f)"
+                      aria-label="Imprimer la facture" title="Imprimer la facture">
+                      <i class="bi bi-printer"></i>
+                    </button>
                     @if (f.statut !== 'payee') {
                       <button type="button" class="act act--ok" (click)="ask('payee', f)"
                         aria-label="Marquer la facture comme payée" title="Marquer comme payée">
@@ -323,7 +327,7 @@
       </h2>
       <p class="confirm__text" id="confirm-text">
         Facture {{ pending.facture.numero }} ({{ typeLabel(pending.facture.type) | lowercase }}@if (concerne(pending.facture); as q) {, {{ q.titre }} }, {{ nombre(pending.facture.montant) }} FCFA).
-        {{ pending.action === 'payee' ? 'Son statut passera à « Payée ».' : 'Cette suppression est définitive.' }}
+        {{ pending.action === 'payee' ? 'Son statut passera à « Payée ».' : 'L’élément ira dans la corbeille : la direction pourra le restaurer.' }}
       </p>
       @if (pendingError) {
         <div class="msg msg--err" role="alert">

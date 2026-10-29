@@ -345,7 +345,7 @@
       <h2 class="confirm__title" id="confirm-title">Supprimer ce rendez-vous ?</h2>
       <p class="confirm__text" id="confirm-text">
         {{ rdvToDelete.objet }} avec {{ rdvToDelete.client?.prenom }} {{ rdvToDelete.client?.nom }},
-        le {{ rdvToDelete.date_heure | date:'dd/MM/yyyy à HH:mm' }}. Cette suppression est définitive.
+        le {{ rdvToDelete.date_heure | date:'dd/MM/yyyy à HH:mm' }}. L’élément ira dans la corbeille : la direction pourra le restaurer.
       </p>
       @if (deleteError) {
         <div class="msg msg--err" role="alert">

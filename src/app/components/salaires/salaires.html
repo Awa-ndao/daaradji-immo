@@ -1,0 +1,228 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Salaires</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="preparer()" [disabled]="preparing">
+        <i class="bi bi-magic"></i> {{ preparing ? 'Préparation…' : 'Préparer les salaires du mois' }}
+      </button>
+    </div>
+
+    @if (successMsg) { <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div> }
+    @if (errorMsg) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div> }
+
+    <div class="mois-bar">
+      <button type="button" class="act" (click)="changerMois(-1)" aria-label="Mois précédent"><i class="bi bi-chevron-left"></i></button>
+      <span class="mois-bar__label"><i class="bi bi-calendar3"></i> {{ moisLabel() }}</span>
+      <button type="button" class="act" (click)="changerMois(1)" aria-label="Mois suivant"><i class="bi bi-chevron-right"></i></button>
+      @if (!estMoisCourant()) {
+        <button type="button" class="mois-bar__today" (click)="revenirMoisCourant()">Revenir au mois en cours</button>
+      }
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span>Masse salariale du mois</span><b>{{ nombre(totaux.masse) }}<small>FCFA</small></b></div>
+      <div class="kpi"><span>Déjà payé</span><b>{{ nombre(totaux.paye) }}<small>FCFA</small></b></div>
+      <div class="kpi kpi--or"><span>Reste à payer</span><b>{{ nombre(totaux.reste) }}<small>FCFA</small></b></div>
+    </div>
+
+    @if (loaded && aAjouter > 0) {
+      <div class="note note--action">
+        <i class="bi bi-info-circle"></i>
+        <span>{{ aAjouter }} employé{{ aAjouter > 1 ? 's' : '' }} actif{{ aAjouter > 1 ? 's n’ont' : ' n’a' }} pas encore de salaire pour {{ moisLabel() }}.</span>
+        <button type="button" class="btn-ghost btn-sm" (click)="preparer()" [disabled]="preparing">Préparer maintenant</button>
+      </div>
+    }
+
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="search" placeholder="Rechercher un employé…" [(ngModel)]="searchTerm" (input)="onSearch()" aria-label="Rechercher un employé">
+      </label>
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (t of statutTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterStatut === t.value" [attr.aria-pressed]="filterStatut === t.value" (click)="setStatut(t.value)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Employé</th>
+              <th class="num">Salaire de base</th>
+              <th class="num">Prime</th>
+              <th class="num">Retenue</th>
+              <th class="num">Net à payer</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="7" class="empty">Chargement…</td></tr>
+            } @else if (lignes.length === 0) {
+              <tr><td colspan="7" class="empty"><i class="bi bi-wallet2"></i>
+                @if (searchTerm || filterStatut) { Aucun salaire ne correspond. }
+                @else { Aucun salaire pour {{ moisLabel() }}. Cliquez sur « Préparer les salaires du mois ». }
+              </td></tr>
+            }
+            @for (l of lignes; track l.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initiales(l.user?.name) }}</span>
+                    <span class="cell2"><b class="who__name">{{ l.user?.name || '—' }}</b><small>{{ roles[l.user?.role] || l.user?.role }}</small></span>
+                  </span>
+                </td>
+                <td class="num price">
+                  @if (l.salaire_base > 0) { {{ nombre(l.salaire_base) }}<small>FCFA</small> }
+                  @else { <span class="tag tag--rouge">À renseigner</span> }
+                </td>
+                <td class="num price">@if (l.prime > 0) { + {{ nombre(l.prime) }}<small>FCFA</small> } @else { <span class="soft">—</span> }</td>
+                <td class="num price">@if (l.retenue > 0) { − {{ nombre(l.retenue) }}<small>FCFA</small> } @else { <span class="soft">—</span> }</td>
+                <td class="num price"><b>{{ nombre(l.net) }}</b><small>FCFA</small></td>
+                <td>
+                  <span class="cell2">
+                    <span class="st" [ngClass]="l.statut === 'paye' ? 'st--payee' : 'st--en_attente'">{{ l.statut === 'paye' ? 'Payé' : 'À payer' }}</span>
+                    @if (l.statut === 'paye') { <small>le {{ l.date_paiement | date:'dd/MM/yyyy' }} · {{ modeLabel(l.mode_paiement) }}</small> }
+                  </span>
+                </td>
+                <td>
+                  <div class="acts">
+                    @if (l.statut !== 'paye') {
+                      <button type="button" class="act" (click)="ouvrirEdition(l)" title="Prime, retenue" aria-label="Modifier le salaire"><i class="bi bi-pencil"></i></button>
+                      <button type="button" class="act act--ok" (click)="ouvrirPaiement(l)" title="Enregistrer le versement" aria-label="Payer"><i class="bi bi-cash-coin"></i></button>
+                    }
+                    <button type="button" class="act" (click)="imprimer(l)" title="Imprimer le bulletin" aria-label="Imprimer le bulletin"><i class="bi bi-printer"></i></button>
+                    @if (l.statut !== 'paye') {
+                      <button type="button" class="act act--del" (click)="demanderSuppression(l)" title="Supprimer" aria-label="Supprimer"><i class="bi bi-trash3"></i></button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+@if (enEdition) {
+  <div class="veil" (click)="fermer()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sal-title" (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="enregistrerEdition()" autocomplete="off" novalidate>
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="sal-title">Salaire de {{ enEdition.user?.name }}</h2>
+            <p class="sheet__sub">{{ moisLabel(enEdition.mois) }} — net = salaire de base + prime − retenue</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="fermer()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="sheet__body">
+          @if (dialogError) { <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ dialogError }}</div> }
+          <div class="full">
+            <label class="lab" for="sal-base">Salaire de base du mois <em>*</em></label>
+            <div class="inp"><i class="bi bi-wallet2"></i>
+              <input id="sal-base" type="number" min="0" [(ngModel)]="form.salaire_base" name="salaire_base" required><span>FCFA</span></div>
+          </div>
+          <div>
+            <label class="lab" for="sal-prime">Prime</label>
+            <div class="inp"><i class="bi bi-plus-circle"></i>
+              <input id="sal-prime" type="number" min="0" [(ngModel)]="form.prime" name="prime"><span>FCFA</span></div>
+          </div>
+          <div>
+            <label class="lab" for="sal-ret">Retenue (avance, absence…)</label>
+            <div class="inp"><i class="bi bi-dash-circle"></i>
+              <input id="sal-ret" type="number" min="0" [(ngModel)]="form.retenue" name="retenue"><span>FCFA</span></div>
+          </div>
+          <div class="full">
+            <label class="lab" for="sal-note">Observation</label>
+            <div class="inp"><i class="bi bi-chat-left-text"></i>
+              <input id="sal-note" type="text" placeholder="Ex. : prime sur la vente de la villa B-001" [(ngModel)]="form.note" name="note"></div>
+          </div>
+          <div class="apercu full">
+            <span>Net à payer</span>
+            <b [class.neg]="netPrevu() < 0">{{ nombre(netPrevu()) }} FCFA</b>
+          </div>
+        </div>
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="fermer()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving"><i class="bi bi-check2"></i> {{ saving ? 'Enregistrement…' : 'Enregistrer' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (aPayer) {
+  <div class="veil" (click)="fermer()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pay-title" (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="confirmerPaiement()" autocomplete="off" novalidate>
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="pay-title">Payer le salaire de {{ aPayer.user?.name }}</h2>
+            <p class="sheet__sub">{{ moisLabel(aPayer.mois) }} — {{ nombre(aPayer.net) }} FCFA</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="fermer()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="sheet__body">
+          @if (dialogError) { <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ dialogError }}</div> }
+          <div class="full">
+            <span class="lab" id="pay-mode">Mode de paiement <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="pay-mode">
+              @for (m of modes; track m.value) {
+                <button type="button" [class.on]="paiement.mode_paiement === m.value" [attr.aria-pressed]="paiement.mode_paiement === m.value"
+                  (click)="choisirMode(m.value)"><i class="bi" [ngClass]="m.icon"></i>{{ m.label }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="lab" for="pay-date">Date du versement <em>*</em></label>
+            <div class="inp"><input id="pay-date" type="date" [(ngModel)]="paiement.date_paiement" name="date_paiement" required></div>
+          </div>
+          <div>
+            <label class="lab" for="pay-ref">Référence</label>
+            <div class="inp"><i class="bi bi-hash"></i>
+              <input id="pay-ref" type="text" placeholder="N° de virement, de transaction…" [(ngModel)]="paiement.reference" name="reference"></div>
+          </div>
+          <div class="note full"><i class="bi bi-info-circle"></i>
+            <span>Une fois payé, le salaire ne peut plus être modifié. Le bulletin reçoit son numéro.</span></div>
+        </div>
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="fermer()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving"><i class="bi bi-cash-coin"></i> {{ saving ? 'Enregistrement…' : 'Confirmer le paiement' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (aSupprimer) {
+  <div class="veil" (click)="fermer()">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="del-title">Supprimer ce salaire ?</h2>
+      <p class="confirm__text">{{ aSupprimer.user?.name }} — {{ moisLabel(aSupprimer.mois) }}. Il ira dans la corbeille : la direction pourra le restaurer.</p>
+      @if (dialogError) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ dialogError }}</div> }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="fermer()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmerSuppression()" [disabled]="saving">
+          <i class="bi bi-trash3"></i> {{ saving ? 'Suppression…' : 'Supprimer' }}</button>
+      </div>
+    </div>
+  </div>
+}

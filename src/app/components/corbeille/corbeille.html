@@ -1,0 +1,106 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Corbeille</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      @if (proprietaire() && elements.length) {
+        <button type="button" class="btn-gold" (click)="demanderVider()"><i class="bi bi-trash3"></i> Vider la corbeille</button>
+      }
+    </div>
+
+    @if (successMsg) { <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div> }
+    @if (errorMsg) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div> }
+
+    <div class="toolbar">
+      <div class="pick pick--filtre">
+        <button type="button" class="pick__btn" [class.pick__btn--open]="pickType" aria-haspopup="listbox" [attr.aria-expanded]="pickType" (click)="pickType = !pickType">
+          <i class="bi bi-funnel"></i><span>{{ filterType ? types[filterType] : 'Tous les éléments' }}</span><i class="bi bi-chevron-down"></i>
+        </button>
+        @if (pickType) {
+          <div class="pick__veil" (click)="pickType = false"></div>
+          <div class="pick__menu" role="listbox" aria-label="Filtrer par type">
+            <button type="button" class="pick__opt" [class.pick__opt--sel]="!filterType" (click)="setType('')"><span class="pick__txt">Tous les éléments</span></button>
+            @for (k of typeKeys(); track k) {
+              <button type="button" class="pick__opt" [class.pick__opt--sel]="filterType === k" (click)="setType(k)"><span class="pick__txt">{{ types[k] }}</span></button>
+            }
+          </div>
+        }
+      </div>
+      <div class="note note--vert"><i class="bi bi-shield-check"></i>
+        <span>Une restauration est refusée si elle casse une règle (bien déjà loué ou vendu, élément lié lui-même supprimé…).</span></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Élément supprimé</th>
+              <th>Supprimé le</th>
+              <th>Par</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="5" class="empty">Chargement…</td></tr>
+            } @else if (elements.length === 0) {
+              <tr><td colspan="5" class="empty"><i class="bi bi-trash3"></i> Rien dans la corbeille.</td></tr>
+            }
+            @for (e of elements; track cle(e)) {
+              <tr>
+                <td><span class="tag">{{ e.type_libelle }}</span></td>
+                <td><b>{{ e.libelle }}</b></td>
+                <td class="soft">{{ e.supprime_le | date:'dd/MM/yyyy à HH:mm' }}</td>
+                <td>{{ e.supprime_par || '—' }}</td>
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act act--ok" (click)="restaurer(e)" [disabled]="busy === cle(e)"
+                      title="Restaurer" [attr.aria-label]="'Restaurer ' + e.libelle"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    @if (proprietaire()) {
+                      <button type="button" class="act act--del" (click)="demanderDefinitif(e)"
+                        title="Supprimer définitivement" [attr.aria-label]="'Supprimer définitivement ' + e.libelle"><i class="bi bi-x-octagon"></i></button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+@if (confirmation) {
+  <div class="veil" (click)="annuler()">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cb-title" aria-describedby="cb-text" (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-x-octagon"></i></div>
+      <h2 class="confirm__title" id="cb-title">{{ confirmation.action === 'vider' ? 'Vider la corbeille ?' : 'Supprimer définitivement ?' }}</h2>
+      <p class="confirm__text" id="cb-text">
+        @if (confirmation.action === 'vider') {
+          Tous les éléments de la corbeille seront effacés pour toujours. Ceux encore liés à des dossiers actifs seront gardés.
+        } @else {
+          {{ confirmation.element.libelle }} sera effacé(e) pour toujours. Cette action ne peut pas être annulée.
+        }
+      </p>
+      @if (confirmError) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ confirmError }}</div> }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="annuler()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmer()" [disabled]="busy === 'confirm'">
+          <i class="bi bi-x-octagon"></i> {{ busy === 'confirm' ? 'Suppression…' : 'Supprimer définitivement' }}</button>
+      </div>
+    </div>
+  </div>
+}

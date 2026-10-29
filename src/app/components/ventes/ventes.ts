@@ -42,11 +42,9 @@ export class VentesComponent implements OnInit {
   ];
   statutTabs = [{ value: '', label: 'Toutes' }, ...this.statuts];
 
-  typesBien = [
-    { value: 'propre', label: 'Bien propre (agence)', icon: 'bi-patch-check' },
-    { value: 'confie_proprietaire', label: 'Confié par un propriétaire', icon: 'bi-person-vcard' },
-    { value: 'confie_agent', label: 'Confié par un agent externe', icon: 'bi-people' }
-  ];
+  // Mandat du bien choisi : la commission est calculée par le serveur à partir de ce mandat
+  mandatVente: any = null;
+  mandatCharge = false;
 
   modesPaiement = [
     { value: 'especes', label: 'Espèces', icon: 'bi-cash' },
@@ -137,6 +135,24 @@ export class VentesComponent implements OnInit {
     const nom = dossier?.user?.name || this.agentNomParId(dossier?.user_id);
     if (!nom) return '?';
     const p = String(nom).replace(/^Moi \(|\)$/g, '').replace(/ · .*$/, '').trim().split(/\s+/);
+    return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+  }
+
+  // ---------- Agent responsable affiché (fixé) dans le formulaire ----------
+  // Nouveau dossier : la personne connectée. Modification : l'agent déjà enregistré.
+  agentFixeLabel(): string {
+    const moi = this.auth.getUser();
+    const id = this.form?.user_id;
+    if (!id || (moi && String(id) === String(moi.id))) {
+      return (moi?.name || '') + ' (vous)';
+    }
+    return this.agentNomParId(id) || 'Non attribué';
+  }
+
+  agentFixeInitiales(): string {
+    const nom = this.agentFixeLabel().replace(/ \(vous\)$/, '').replace(/ · .*$/, '').replace(/^Moi \(|\)$/g, '').trim();
+    const p = nom.split(/\s+/).filter(Boolean);
+    if (!p.length || nom === 'Non attribué') return '?';
     return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
   }
 
@@ -336,18 +352,49 @@ export class VentesComponent implements OnInit {
     });
   }
 
-  // ---------- Commission ----------
+  // ---------- Commission (aperçu ; le calcul officiel est fait par le serveur) ----------
 
-  getPartAgent(): number {
-    if (this.form.type_bien === 'confie_agent') {
-      return (Number(this.form.commission_agence) || 0) / 2;
-    }
-    return 0;
+  bienChoisi(): any {
+    return this.biens.find((b: any) => String(b.id) === String(this.form.bien_id));
+  }
+
+  chargerMandat(bien: any): void {
+    this.mandatVente = null;
+    this.mandatCharge = false;
+    if (!bien || bien.type_propriete !== 'confie') return;
+    this.api.get('mandats', { bien_id: bien.id, statut: 'actif', type: 'vente' }).subscribe({
+      next: (d: any) => {
+        this.mandatVente = (d?.data || [])[0] || null;
+        this.mandatCharge = true;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.mandatCharge = true; this.cdr.detectChanges(); }
+    });
+  }
+
+  partenaire(): boolean {
+    return this.mandatVente?.proprietaire_tiers?.type === 'agence';
+  }
+
+  commissionTotale(): number {
+    return Math.round((Number(this.form.prix_vente) || 0) * (Number(this.mandatVente?.taux_commission) || 0)) / 100;
   }
 
   getPartAgence(): number {
-    const commission = Number(this.form.commission_agence) || 0;
-    return this.form.type_bien === 'confie_agent' ? commission / 2 : commission;
+    return this.partenaire() ? this.commissionTotale() / 2 : this.commissionTotale();
+  }
+
+  getPartPartenaire(): number {
+    return this.partenaire() ? this.commissionTotale() / 2 : 0;
+  }
+
+  montantReverse(): number {
+    return (Number(this.form.prix_vente) || 0) - this.getPartAgence();
+  }
+
+  nomMandant(): string {
+    const p = this.mandatVente?.proprietaire_tiers;
+    return [p?.prenom, p?.nom].filter(Boolean).join(' ') || 'le propriétaire';
   }
 
   // ---------- Formulaire ----------
@@ -359,10 +406,7 @@ export class VentesComponent implements OnInit {
       date_vente: new Date().toISOString().slice(0, 10), // aujourd'hui par défaut
       mode_paiement: 'especes',
       client_id: '',
-      bien_id: '',
-      type_bien: 'propre',
-      commission_agence: 0,
-      nom_agent_externe: ''
+      bien_id: ''
     };
   }
 
@@ -383,7 +427,7 @@ export class VentesComponent implements OnInit {
     this.resetForm();
   }
 
-  choose(field: 'type_bien' | 'mode_paiement', value: string): void {
+  choose(field: 'mode_paiement', value: string): void {
     this.form[field] = value;
     this.cdr.detectChanges();
   }
@@ -405,7 +449,7 @@ export class VentesComponent implements OnInit {
     if (!this.form.prix_vente && bien.prix) {
       this.form.prix_vente = bien.prix;
     }
-    this.form.type_bien = bien.type_propriete === 'propre' ? 'propre' : 'confie_proprietaire';
+    this.chargerMandat(bien);
     this.openPicker = null;
     this.cdr.detectChanges();
   }

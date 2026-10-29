@@ -243,7 +243,7 @@
       <h2 class="confirm__title" id="confirm-title">
         Supprimer le client {{ clientToDelete.nom }} {{ clientToDelete.prenom }} ?
       </h2>
-      <p class="confirm__text" id="confirm-text">Cette suppression est définitive.</p>
+      <p class="confirm__text" id="confirm-text">L’élément ira dans la corbeille : la direction pourra le restaurer.</p>
       @if (deleteError) {
         <div class="msg msg--err" role="alert">
           <i class="bi bi-exclamation-circle"></i> {{ deleteError }}

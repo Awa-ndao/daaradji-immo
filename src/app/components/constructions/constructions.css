@@ -1261,3 +1261,23 @@ button { font: inherit; }
 .dates > span + span { margin-top: 4px; }
 .dates b { font-size: 13.5px; }
 .data-table td .bien span { white-space: normal; }
+
+/* Agent responsable fixé dans le formulaire (non modifiable) */
+.agent-fixe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px 0 8px;
+  border: 1.5px solid #E3E4DC;
+  border-radius: 10px;
+  background: #F4F5F1;
+  color: #3A443E;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+}
+
+.agent-fixe .agent__ini { width: 28px; height: 28px; font-size: 11px; }
+.agent-fixe__nom { flex: 1; }
+.agent-fixe > i { color: #8A938D; }

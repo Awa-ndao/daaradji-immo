@@ -224,6 +224,16 @@
             </div>
           }
 
+          <!-- Agent responsable : fixé (celui qui enregistre le dossier), non modifiable -->
+          <div class="full">
+            <span class="lab" id="agent-fixe-label">Agent responsable</span>
+            <div class="agent-fixe" aria-labelledby="agent-fixe-label">
+              <span class="agent__ini">{{ agentFixeInitiales() }}</span>
+              <span class="agent-fixe__nom">{{ agentFixeLabel() }}</span>
+              <i class="bi bi-lock" title="Fixé automatiquement : non modifiable"></i>
+            </div>
+          </div>
+
 
           <!-- Client -->
           <div>
@@ -521,7 +531,7 @@
       <p class="confirm__text" id="confirm-text">
         Chantier de {{ pending.client?.prenom }} {{ pending.client?.nom }}
         @if (pending.bien?.reference) { sur {{ pending.bien?.reference }} }.
-        Cette suppression est définitive.
+        L’élément ira dans la corbeille : la direction pourra le restaurer.
       </p>
       @if (pendingError) {
         <div class="msg msg--err" role="alert">

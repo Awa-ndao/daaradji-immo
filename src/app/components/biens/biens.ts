@@ -56,8 +56,13 @@ export class BiensComponent implements OnInit {
     prix: '',
     type_propriete: 'propre',
     statut: 'disponible',
-    description: ''
+    description: '',
+    proprietaire_tiers_id: ''
   };
+
+  // Propriétaire tiers d'un bien confié
+  proprietaires: any[] = [];
+  ptPickerOpen = false;
 
   private searchTimer: any;
 
@@ -68,6 +73,28 @@ export class BiensComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadBiens();
+    this.loadProprietaires();
+  }
+
+  loadProprietaires(): void {
+    this.api.get('proprietaires-tiers', { per_page: 100 }).subscribe({
+      next: (d: any) => { this.proprietaires = d?.data || []; this.cdr.detectChanges(); },
+      error: () => { this.proprietaires = []; }
+    });
+  }
+
+  nomPt(p: any): string {
+    return [p?.prenom, p?.nom].filter(Boolean).join(' ');
+  }
+
+  ptChoisi(): any {
+    return this.proprietaires.find(p => String(p.id) === String(this.form.proprietaire_tiers_id));
+  }
+
+  pickPt(p: any): void {
+    this.form.proprietaire_tiers_id = p.id;
+    this.ptPickerOpen = false;
+    this.cdr.detectChanges();
   }
 
   // ---------- Libellés ----------
@@ -184,6 +211,8 @@ export class BiensComponent implements OnInit {
   // detectChanges() rafraîchit l'écran tout de suite après le clic.
   choose(field: 'type' | 'type_propriete' | 'statut', value: string): void {
     this.form[field] = value;
+    if (field === 'type_propriete' && value === 'propre') this.form.proprietaire_tiers_id = '';
+    if (field === 'type_propriete' && value === 'confie' && !this.proprietaires.length) this.loadProprietaires();
     this.cdr.detectChanges();
   }
 
@@ -209,6 +238,11 @@ export class BiensComponent implements OnInit {
     const prixVide = this.form.prix === '' || this.form.prix === null || this.form.prix === undefined;
     if (!this.form.reference || !this.form.type || !this.form.localisation || prixVide) {
       this.errorMsg = 'Veuillez remplir la référence, le type, la localisation et le prix.';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (this.form.type_propriete === 'confie' && !this.form.proprietaire_tiers_id) {
+      this.errorMsg = 'Un bien confié doit avoir son propriétaire tiers.';
       this.cdr.detectChanges();
       return;
     }
@@ -264,7 +298,8 @@ export class BiensComponent implements OnInit {
       prix: bien.prix,
       type_propriete: bien.type_propriete,
       statut: bien.statut,
-      description: bien.description || ''
+      description: bien.description || '',
+      proprietaire_tiers_id: bien.proprietaire_tiers_id || ''
     };
     this.showForm = true;
     this.cdr.detectChanges();
@@ -321,8 +356,10 @@ export class BiensComponent implements OnInit {
       prix: '',
       type_propriete: 'propre',
       statut: 'disponible',
-      description: ''
+      description: '',
+      proprietaire_tiers_id: ''
     };
+    this.ptPickerOpen = false;
     this.editingId = null;
     this.errorMsg = '';
     this.saving = false;

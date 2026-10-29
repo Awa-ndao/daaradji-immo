@@ -1,0 +1,219 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" />
+        <rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" />
+        <rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Propriétaires tiers</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+      <button type="button" class="btn-gold" (click)="openNew()">
+        <i class="bi bi-plus-lg"></i> Nouveau propriétaire
+      </button>
+    </div>
+
+    @if (successMsg) {
+      <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div>
+    }
+
+    <div class="toolbar">
+      <label class="search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un nom, un téléphone…" aria-label="Rechercher un propriétaire"
+          autocomplete="off" [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
+      </label>
+      <div class="tabs" role="group" aria-label="Filtrer par type">
+        @for (t of typeTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterType === t.value"
+            [attr.aria-pressed]="filterType === t.value" (click)="setType(t.value)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Propriétaire</th>
+              <th>Téléphone</th>
+              <th>Reversement</th>
+              <th class="num">Biens</th>
+              <th class="num">Mandats</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="6" class="empty">Chargement…</td></tr>
+            } @else if (proprietaires.length === 0) {
+              <tr><td colspan="6" class="empty"><i class="bi bi-person-vcard"></i>
+                @if (searchTerm || filterType) { Aucun propriétaire ne correspond. } @else { Aucun propriétaire tiers pour l'instant. }
+              </td></tr>
+            }
+            @for (p of proprietaires; track p.id) {
+              <tr>
+                <td>
+                  <span class="who">
+                    <span class="avatar">{{ initials(p) }}</span>
+                    <span class="cell2">
+                      <span class="who__name">{{ nomComplet(p) }}</span>
+                      @if (p.type === 'agence') { <small><span class="tag tag--or"><i class="bi bi-buildings"></i>Agence partenaire · 50/50</span></small> }
+                      @else { <small>Particulier</small> }
+                    </span>
+                  </span>
+                </td>
+                <td class="tel"><i class="bi bi-telephone"></i> {{ p.telephone }}</td>
+                <td>
+                  <span class="cell2">
+                    <span>{{ modeLabel(p.mode_reversement) }}</span>
+                    @if (p.numero_mobile_money || p.numero_compte) { <small>{{ p.numero_mobile_money || p.numero_compte }}</small> }
+                  </span>
+                </td>
+                <td class="num">{{ p.biens_count || 0 }}</td>
+                <td class="num">{{ p.mandats_count || 0 }}</td>
+                <td>
+                  <div class="acts">
+                    <button type="button" class="act" (click)="edit(p)" [attr.aria-label]="'Modifier ' + nomComplet(p)" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="act act--del" (click)="askDelete(p)" [attr.aria-label]="'Supprimer ' + nomComplet(p)" title="Supprimer">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" aria-label="Page précédente"><i class="bi bi-chevron-left"></i></button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" aria-label="Page suivante"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </div>
+  </main>
+</div>
+
+@if (showForm) {
+  <div class="veil" (click)="closeForm()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pt-title" (click)="$event.stopPropagation()">
+      <form class="sheet__form" (ngSubmit)="save()" autocomplete="off" novalidate>
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="pt-title">{{ editingId ? 'Modifier le propriétaire' : 'Nouveau propriétaire tiers' }}</h2>
+            <p class="sheet__sub">Les champs marqués d'un <em>*</em> sont obligatoires.</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="closeForm()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="sheet__body">
+          @if (errorMsg) {
+            <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div>
+          }
+
+          <div class="full">
+            <span class="lab" id="pt-type">Qui confie le bien ? <em>*</em></span>
+            <div class="seg" role="group" aria-labelledby="pt-type">
+              <button type="button" [class.on]="form.type === 'particulier'" [attr.aria-pressed]="form.type === 'particulier'"
+                (click)="choose('type', 'particulier')"><i class="bi bi-person"></i>Un particulier</button>
+              <button type="button" [class.on]="form.type === 'agence'" [attr.aria-pressed]="form.type === 'agence'"
+                (click)="choose('type', 'agence')"><i class="bi bi-buildings"></i>Une agence partenaire</button>
+            </div>
+          </div>
+          @if (form.type === 'agence') {
+            <div class="note full"><i class="bi bi-info-circle"></i>
+              <span>Pour un bien confié par une agence partenaire, la commission est partagée à parts égales (50/50).</span></div>
+          }
+
+          <div [class.full]="form.type === 'agence'">
+            <label class="lab" for="pt-nom">{{ form.type === 'agence' ? 'Nom de l’agence' : 'Nom' }} <em>*</em></label>
+            <div class="inp"><i class="bi" [class.bi-buildings]="form.type === 'agence'" [class.bi-person]="form.type !== 'agence'"></i>
+              <input id="pt-nom" type="text" [(ngModel)]="form.nom" name="nom" required></div>
+          </div>
+          @if (form.type === 'particulier') {
+            <div>
+              <label class="lab" for="pt-prenom">Prénom</label>
+              <div class="inp"><input id="pt-prenom" type="text" [(ngModel)]="form.prenom" name="prenom"></div>
+            </div>
+          }
+
+          <div>
+            <label class="lab" for="pt-tel">Téléphone <em>*</em></label>
+            <div class="inp"><i class="bi bi-telephone"></i>
+              <input id="pt-tel" type="tel" placeholder="77 000 00 00" [(ngModel)]="form.telephone" name="telephone" required></div>
+          </div>
+          <div>
+            <label class="lab" for="pt-piece">{{ form.type === 'agence' ? 'NINEA / registre' : 'Pièce d’identité' }}</label>
+            <div class="inp"><i class="bi bi-person-vcard"></i>
+              <input id="pt-piece" type="text" [(ngModel)]="form.piece_identite" name="piece_identite"></div>
+          </div>
+
+          <div class="full">
+            <label class="lab" for="pt-adresse">Adresse</label>
+            <div class="inp"><i class="bi bi-geo-alt"></i>
+              <input id="pt-adresse" type="text" [(ngModel)]="form.adresse" name="adresse"></div>
+          </div>
+
+          <div class="full">
+            <span class="lab" id="pt-mode">Reversement de l’argent</span>
+            <div class="seg" role="group" aria-labelledby="pt-mode">
+              @for (m of modes; track m.value) {
+                <button type="button" [class.on]="form.mode_reversement === m.value" [attr.aria-pressed]="form.mode_reversement === m.value"
+                  (click)="choose('mode_reversement', m.value)"><i class="bi" [ngClass]="m.icon"></i>{{ m.label }}</button>
+              }
+            </div>
+          </div>
+          @if (form.mode_reversement === 'mobile_money') {
+            <div class="full">
+              <label class="lab" for="pt-mm">Numéro mobile money</label>
+              <div class="inp"><i class="bi bi-phone"></i>
+                <input id="pt-mm" type="tel" placeholder="Wave, Orange Money…" [(ngModel)]="form.numero_mobile_money" name="numero_mobile_money"></div>
+            </div>
+          }
+          @if (form.mode_reversement === 'virement') {
+            <div class="full">
+              <label class="lab" for="pt-cpt">Numéro de compte bancaire</label>
+              <div class="inp"><i class="bi bi-bank"></i>
+                <input id="pt-cpt" type="text" [(ngModel)]="form.numero_compte" name="numero_compte"></div>
+            </div>
+          }
+        </div>
+
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn-main" [disabled]="saving"><i class="bi bi-check2"></i>
+            {{ saving ? 'Enregistrement…' : (editingId ? 'Enregistrer les modifications' : 'Enregistrer') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (aSupprimer) {
+  <div class="veil" (click)="cancelDelete()">
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" (click)="$event.stopPropagation()">
+      <div class="confirm__icon"><i class="bi bi-trash3"></i></div>
+      <h2 class="confirm__title" id="del-title">Supprimer ce propriétaire ?</h2>
+      <p class="confirm__text">{{ nomComplet(aSupprimer) }}. Il ira dans la corbeille : la direction pourra le restaurer.</p>
+      @if (deleteError) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ deleteError }}</div> }
+      <div class="confirm__actions">
+        <button type="button" class="btn-ghost" (click)="cancelDelete()">Annuler</button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting">
+          <i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}</button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,113 @@
+<div class="layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="page-head">
+      <svg class="head-roof" viewBox="0 0 600 260" fill="none" aria-hidden="true">
+        <path d="M10 236 L128 180 L128 132 L176 132 L176 156 L306 82 L452 170" />
+        <path d="M356 82 L536 186 L700 186" />
+        <rect x="284" y="138" width="20" height="20" /><rect x="310" y="138" width="20" height="20" />
+        <rect x="284" y="164" width="20" height="20" /><rect x="310" y="164" width="20" height="20" />
+      </svg>
+      <div class="page-head__text">
+        <h1 class="page-title">Commissions</h1>
+        <p class="page-sub">{{ subtitle() }}</p>
+      </div>
+    </div>
+
+    @if (successMsg) { <div class="msg msg--ok" role="status"><i class="bi bi-check-circle"></i> {{ successMsg }}</div> }
+    @if (errorMsg) { <div class="msg msg--err" role="alert"><i class="bi bi-exclamation-circle"></i> {{ errorMsg }}</div> }
+
+    <div class="kpis">
+      <div class="kpi"><span>Commissions de l’agence</span><b>{{ nombre(totaux.agence) }}<small>FCFA</small></b></div>
+      <div class="kpi kpi--or"><span>Reste à encaisser</span><b>{{ nombre(totaux.en_attente) }}<small>FCFA</small></b></div>
+      <div class="kpi"><span>Parts reversées aux agences partenaires</span><b>{{ nombre(totaux.partenaires) }}<small>FCFA</small></b></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" role="group" aria-label="Filtrer par statut">
+        @for (t of statutTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterStatut === t.value" [attr.aria-pressed]="filterStatut === t.value" (click)="setStatut(t.value)">{{ t.label }}</button>
+        }
+      </div>
+      <div class="tabs" role="group" aria-label="Filtrer par opération">
+        @for (t of typeTabs; track t.value) {
+          <button type="button" class="tab" [class.tab--on]="filterType === t.value" [attr.aria-pressed]="filterType === t.value" (click)="setType(t.value)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Opération</th>
+              <th>Mandant</th>
+              <th class="num">Base</th>
+              <th class="num">Taux</th>
+              <th class="num">Part agence</th>
+              <th class="num">Part partenaire</th>
+              <th>Statut</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (!loaded) {
+              <tr><td colspan="8" class="empty">Chargement…</td></tr>
+            } @else if (commissions.length === 0) {
+              <tr><td colspan="8" class="empty"><i class="bi bi-percent"></i>
+                Aucune commission. Elles apparaissent quand un bien confié est vendu ou loué.</td></tr>
+            }
+            @for (c of commissions; track c.id) {
+              <tr>
+                <td>
+                  <span class="cell2">
+                    <b>{{ c.type_transaction === 'vente' ? 'Vente' : 'Location' }} — {{ bienTexte(operation(c)?.bien) }}</b>
+                    <small>Client : {{ nom(operation(c)?.client) }}</small>
+                  </span>
+                </td>
+                <td>
+                  <span class="cell2">
+                    <span>{{ nom(operation(c)?.bien?.proprietaire_tiers) }}</span>
+                    @if (c.part_partenaire > 0) { <small><span class="tag tag--or">Agence · 50/50</span></small> }
+                  </span>
+                </td>
+                <td class="num price">{{ nombre(c.base) }}<small>FCFA</small></td>
+                <td class="num">{{ c.taux }} %</td>
+                <td class="num price"><b>{{ nombre(c.part_agence) }}</b><small>FCFA</small></td>
+                <td class="num price">
+                  @if (c.part_partenaire > 0) { {{ nombre(c.part_partenaire) }}<small>FCFA</small> } @else { <span class="soft">—</span> }
+                </td>
+                <td>
+                  <span class="cell2">
+                    <span class="st" [ngClass]="'st--' + c.statut">{{ c.statut === 'payee' ? 'Encaissée' : 'À encaisser' }}</span>
+                    @if (c.date_paiement) { <small>le {{ c.date_paiement | date:'dd/MM/yyyy' }}</small> }
+                  </span>
+                </td>
+                <td>
+                  <div class="acts">
+                    @if (c.statut !== 'payee') {
+                      <button type="button" class="act act--ok" (click)="basculer(c)" [disabled]="busyId === c.id"
+                        title="Marquer comme encaissée" aria-label="Marquer comme encaissée"><i class="bi bi-check2-circle"></i></button>
+                    } @else {
+                      <button type="button" class="act act--warn" (click)="basculer(c)" [disabled]="busyId === c.id"
+                        title="Annuler l’encaissement" aria-label="Annuler l’encaissement"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-bar">
+          <button type="button" class="act" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1" aria-label="Page précédente"><i class="bi bi-chevron-left"></i></button>
+          <span>Page {{ currentPage }} sur {{ totalPages }}</span>
+          <button type="button" class="act" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages" aria-label="Page suivante"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </div>
+  </main>
+</div>
