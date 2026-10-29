@@ -1,11 +1,12 @@
 <?php
 namespace App\Models;
+use App\Models\Concerns\Journalise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contrat extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Journalise;
     protected $fillable = ['numero', 'type', 'date_creation', 'date_signature', 'fichier_pdf', 'statut', 'location_id', 'vente_id', 'construction_id'];
 
     public function location() { return $this->belongsTo(Location::class); }

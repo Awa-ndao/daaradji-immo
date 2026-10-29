@@ -1,15 +1,17 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\SuppressionProtegee;
 
 use App\Models\Vente;
 use App\Models\Bien;
-use App\Models\Commission;
+use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Concerns\PorteeAgent;
 
 class VenteController extends Controller
 {
+    use SuppressionProtegee;
     use PorteeAgent;
 
     public function index(Request $request)
@@ -45,16 +47,12 @@ class VenteController extends Controller
             'mode_paiement'    => 'required|in:especes,virement,cheque,mobile_money',
             'client_id'        => 'required|exists:clients,id',
             'bien_id'          => 'required|exists:biens,id',
-            'type_bien'        => 'required|in:propre,confie_proprietaire,confie_agent',
-            'commission_agence'=> 'nullable|numeric|min:0',
-            'nom_agent_externe'=> 'nullable|string',
         ], [
             'prix_vente.required'    => 'Le prix de vente est obligatoire.',
             'date_vente.required'    => 'La date de vente est obligatoire.',
             'mode_paiement.required' => 'Le mode de paiement est obligatoire.',
             'client_id.required'     => 'Le client est obligatoire.',
             'bien_id.required'       => 'Le bien est obligatoire.',
-            'type_bien.required'     => 'Le type de bien est obligatoire.',
         ]);
 
         // Vérifier que le bien est disponible
@@ -65,13 +63,9 @@ class VenteController extends Controller
             ], 422);
         }
 
-        $commissionAgence = $request->commission_agence ?? 0;
-        $montantReverse   = 0;
-
-        // Si agent externe : partage 50/50
-        if ($request->type_bien === 'confie_agent') {
-            $montantReverse   = $commissionAgence / 2;
-            $commissionAgence = $commissionAgence / 2;
+        // Bien confié : il faut un mandat de vente actif
+        if ($erreur = CommissionService::verifierMandat($bien, 'vente')) {
+            return response()->json(['message' => $erreur], 422);
         }
 
         $vente = Vente::create([
@@ -79,22 +73,15 @@ class VenteController extends Controller
             'date_vente'        => $request->date_vente,
             'mode_paiement'     => $request->mode_paiement,
             'statut'            => 'en_cours',
-            'commission_agence' => $commissionAgence,
-            'montant_reverse'   => $montantReverse,
+            'commission_agence' => 0,
+            'montant_reverse'   => 0,
             'client_id'         => $request->client_id,
             'bien_id'           => $request->bien_id,
             'user_id'           => auth()->id(), // celui qui enregistre le dossier en est responsable
         ]);
 
-        // Créer la commission
-        Commission::create([
-            'montant'          => $commissionAgence,
-            'taux'             => 0,
-            'type_transaction' => 'vente',
-            'statut'           => 'en_attente',
-            'vente_id'         => $vente->id,
-            'user_id'          => $vente->user_id,
-        ]);
+        // Commission calculée automatiquement à partir du mandat (bien confié uniquement)
+        CommissionService::pourVente($vente);
 
         // Marquer le bien comme vendu
         $bien->update(['statut' => 'vendu']);
@@ -106,20 +93,23 @@ class VenteController extends Controller
     {
         $this->verifierAgent($vente);
         return response()->json(
-            $vente->load(['client', 'bien', 'user', 'contrat', 'factures', 'commission'])
+            $vente->load(['client', 'bien', 'user', 'contrat', 'factures', 'commission', 'demarches'])
         );
     }
 
     public function update(Request $request, Vente $vente)
     {
         $this->verifierAgent($vente);
-        $vente->update($this->champsModifiables($request));
-        if ($vente->wasChanged('user_id')) {
-            $vente->commission?->update(['user_id' => $vente->user_id]);
+        // La commission et le montant reversé sont calculés, jamais saisis
+        $vente->update(collect($this->champsModifiables($request))
+            ->except(['commission_agence', 'montant_reverse'])->all());
+        if ($vente->wasChanged('prix_vente')) {
+            CommissionService::pourVente($vente->fresh());
         }
 
         if ($request->statut === 'annule') {
             $vente->bien->update(['statut' => 'disponible']);
+            $vente->commission?->delete(); // vente annulée : pas de commission
         }
 
         return response()->json($vente->load(['client', 'bien', 'user']));
@@ -128,6 +118,7 @@ class VenteController extends Controller
     public function destroy(Vente $vente)
     {
         $this->verifierAgent($vente);
+        if ($refus = $this->refusSuppression($vente, 'cette vente', ['factures', 'contrat', 'demarches'])) return $refus;
         $vente->bien->update(['statut' => 'disponible']);
         $vente->delete();
         return response()->json(['message' => 'Vente supprimée avec succès']);

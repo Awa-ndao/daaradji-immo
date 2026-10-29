@@ -1,12 +1,14 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\SuppressionProtegee;
 
 use App\Models\Client;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
+    use SuppressionProtegee;
     public function index(Request $request)
     {
         $query = Client::query();
@@ -80,6 +82,7 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
+        if ($refus = $this->refusSuppression($client, 'ce client', ['ventes', 'locations', 'constructions', 'rendezVous'])) return $refus;
         $client->delete();
         return response()->json(['message' => 'Client supprimé avec succès']);
     }

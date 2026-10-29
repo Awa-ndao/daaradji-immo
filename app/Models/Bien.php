@@ -1,11 +1,12 @@
 <?php
 namespace App\Models;
+use App\Models\Concerns\Journalise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Bien extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Journalise;
     protected $fillable = ['reference', 'type', 'localisation', 'superficie', 'prix', 'statut', 'type_propriete', 'description', 'proprietaire_tiers_id'];
 
     public function proprietaireTiers() { return $this->belongsTo(ProprietaireTiers::class); }

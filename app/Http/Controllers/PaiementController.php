@@ -22,9 +22,10 @@ class PaiementController extends Controller
     {
         $data = $this->valider($request);
         $data['statut'] = $data['statut'] ?? 'paye';
+        if ($refus = $this->depasseReste($data)) return $refus;
 
         $paiement = Paiement::create($data);
-        $this->majStatutFacture($paiement->facture);
+        $paiement->facture?->majStatut();
 
         return response()->json($paiement->load('facture'), 201);
     }
@@ -37,12 +38,14 @@ class PaiementController extends Controller
     public function update(Request $request, Paiement $paiement)
     {
         $ancienneFacture = $paiement->facture;
-        $paiement->update($this->valider($request));
+        $data = $this->valider($request);
+        if ($refus = $this->depasseReste($data + ['statut' => $paiement->statut], $paiement->id)) return $refus;
+        $paiement->update($data);
         $paiement->refresh();
 
-        $this->majStatutFacture($paiement->facture);
+        $paiement->facture?->majStatut();
         if ($ancienneFacture && $ancienneFacture->id !== $paiement->facture_id) {
-            $this->majStatutFacture($ancienneFacture);
+            $ancienneFacture->majStatut();
         }
         return response()->json($paiement->load('facture'));
     }
@@ -51,8 +54,29 @@ class PaiementController extends Controller
     {
         $facture = $paiement->facture;
         $paiement->delete();
-        $this->majStatutFacture($facture);
+        $facture?->majStatut();
         return response()->json(['message' => 'Paiement supprimé']);
+    }
+
+    // Un paiement réglé ne peut pas dépasser ce qu'il reste à payer sur la facture
+    private function depasseReste(array $data, ?int $sauf = null)
+    {
+        if (($data['statut'] ?? 'paye') !== 'paye') {
+            return null;
+        }
+        $facture = Facture::find($data['facture_id']);
+        $dejaPaye = $facture->paiements()->where('statut', 'paye')
+            ->when($sauf, fn ($q) => $q->where('id', '!=', $sauf))->sum('montant');
+        $reste = max(0, (float) $facture->montant - (float) $dejaPaye);
+        if ((float) $data['montant'] > $reste + 0.001) {
+            $fmt = number_format($reste, 0, ',', ' ');
+            return response()->json([
+                'message' => $reste > 0
+                    ? "Le montant dépasse le reste à payer ({$fmt} FCFA)."
+                    : 'Cette facture est déjà entièrement payée.'
+            ], 422);
+        }
+        return null;
     }
 
     private function valider(Request $request): array
@@ -73,22 +97,4 @@ class PaiementController extends Controller
         ]);
     }
 
-    // La facture est « payée » quand les paiements réglés couvrent son montant,
-    // sinon elle redevient « en attente » (ou « en retard » si l'échéance est passée).
-    private function majStatutFacture(?Facture $facture): void
-    {
-        if (!$facture) return;
-        $totalPaye = $facture->paiements()->where('statut', 'paye')->sum('montant');
-
-        if ($facture->montant > 0 && $totalPaye >= $facture->montant) {
-            $statut = 'payee';
-        } elseif ($facture->date_echeance && now()->toDateString() > $facture->date_echeance) {
-            $statut = 'en_retard';
-        } else {
-            $statut = 'en_attente';
-        }
-        if ($facture->statut !== $statut) {
-            $facture->update(['statut' => $statut]);
-        }
-    }
 }

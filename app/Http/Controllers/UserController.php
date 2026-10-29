@@ -41,7 +41,9 @@ class UserController extends Controller
         }
         if ($request->statut) $query->where('statut', $request->statut);
         $parPage = min((int) ($request->per_page ?: 10), 100);
-        return response()->json($query->latest()->paginate($parPage));
+        $page = $query->latest()->paginate($parPage);
+        $page->getCollection()->each->makeVisible('salaire_base');
+        return response()->json($page);
     }
 
     // Personnes qui peuvent suivre un dossier (agents, administrateurs, propriétaires actifs)
@@ -64,6 +66,7 @@ class UserController extends Controller
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|min:8',
             'role'     => 'required|in:' . self::ROLES,
+            'salaire_base' => 'nullable|numeric|min:0',
         ], $this->messages());
 
         if ($this->estAdministrateur($request) && !in_array($request->role, self::ROLES_GERES_PAR_ADMIN, true)) {
@@ -78,14 +81,15 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'role'     => $request->role,
             'statut'   => 'actif',
+            'salaire_base' => $request->filled('salaire_base') ? $request->salaire_base : null,
         ]);
 
-        return response()->json($user, 201);
+        return response()->json($user->makeVisible('salaire_base'), 201);
     }
 
     public function show(User $user)
     {
-        return response()->json($user);
+        return response()->json($user->makeVisible('salaire_base'));
     }
 
     public function update(Request $request, User $user)
@@ -96,7 +100,9 @@ class UserController extends Controller
             'password' => 'nullable|min:8',
             'role'     => 'sometimes|required|in:' . self::ROLES,
             'statut'   => 'sometimes|required|in:actif,inactif',
+            'salaire_base' => 'nullable|numeric|min:0',
         ], $this->messages());
+        if (array_key_exists('salaire_base', $data) && $data['salaire_base'] === '') $data['salaire_base'] = null;
 
         $moi = $request->user();
         $soiMeme = $moi && $moi->id === $user->id;
@@ -106,6 +112,9 @@ class UserController extends Controller
                 // Son propre compte : nom, e-mail et mot de passe seulement
                 if ((isset($data['role']) && $data['role'] !== $user->role) || isset($data['statut']) && $data['statut'] !== $user->statut) {
                     return response()->json(['message' => 'Vous ne pouvez pas changer votre propre rôle ni votre statut.'], 403);
+                }
+                if (array_key_exists('salaire_base', $data) && (float) $data['salaire_base'] !== (float) $user->salaire_base) {
+                    return response()->json(['message' => 'Votre salaire est fixé par le propriétaire.'], 403);
                 }
             } else {
                 if ($refus = $this->refusPourAdmin($request, $user)) return $refus;
@@ -137,12 +146,17 @@ class UserController extends Controller
 
         $user->update($data);
 
+        // Compte réactivé ou mot de passe changé : le compteur d'échecs de connexion repart à zéro
+        if (($data['statut'] ?? null) === 'actif' || !empty($data['password'])) {
+            $user->forceFill(['tentatives_echouees' => 0, 'bloque_jusqu_a' => null])->saveQuietly();
+        }
+
         // Compte désactivé : ses sessions ouvertes sont fermées
         if (($data['statut'] ?? null) === 'inactif' && method_exists($user, 'tokens')) {
             $user->tokens()->delete();
         }
 
-        return response()->json($user);
+        return response()->json($user->makeVisible('salaire_base'));
     }
 
     public function destroy(Request $request, User $user)
@@ -156,10 +170,11 @@ class UserController extends Controller
         }
         // Supprimer le compte effacerait aussi ses dossiers (ventes, chantiers… liés à lui) : on refuse
         $dossiers = $user->ventes()->count() + $user->constructions()->count() + $user->achats()->count()
-            + $user->rendezVous()->count() + \App\Models\Location::where('user_id', $user->id)->count();
+            + $user->rendezVous()->count() + \App\Models\Location::where('user_id', $user->id)->count()
+            + $user->salaires()->withTrashed()->count();
         if ($dossiers > 0) {
             return response()->json([
-                'message' => 'Ce compte suit ' . $dossiers . ' dossier(s). Désactivez-le plutôt, ou réattribuez d\'abord ses dossiers à un autre agent.'
+                'message' => 'Ce compte a ' . $dossiers . ' dossier(s) ou salaire(s) enregistrés. Désactivez-le plutôt, ou réattribuez d\'abord ses dossiers à un autre agent.'
             ], 422);
         }
         if (method_exists($user, 'tokens')) {
@@ -187,6 +202,8 @@ class UserController extends Controller
             'password.required' => 'Le mot de passe est obligatoire.',
             'password.min'      => 'Le mot de passe doit avoir au moins 8 caractères.',
             'role.required'     => 'Le rôle est obligatoire.',
+            'salaire_base.numeric' => 'Le salaire doit être un montant.',
+            'salaire_base.min'     => 'Le salaire ne peut pas être négatif.',
         ];
     }
 }

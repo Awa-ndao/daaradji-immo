@@ -1,10 +1,16 @@
 <?php
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\SuppressionProtegee;
+use App\Models\Construction;
 use App\Models\Facture;
+use App\Models\Location;
+use App\Models\Vente;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 
 class FactureController extends Controller
 {
+    use SuppressionProtegee;
     // Tout ce qu'il faut pour afficher le bien, le client et l'étape d'une facture
     private const RELATIONS = [
         'location.bien', 'location.client',
@@ -44,18 +50,19 @@ class FactureController extends Controller
             $request->validate(['statut' => 'required|in:en_attente,payee,en_retard']);
             $facture->update(['statut' => $request->statut]);
         } else {
-            $facture->update($this->valider($request));
+            $facture->update($this->valider($request, $facture));
         }
         return response()->json($facture->load(self::RELATIONS));
     }
 
     public function destroy(Facture $facture)
     {
+        if ($refus = $this->refusSuppression($facture, 'cette facture', ['paiements'])) return $refus;
         $facture->delete();
         return response()->json(['message' => 'Facture supprimée']);
     }
 
-    private function valider(Request $request): array
+    private function valider(Request $request, ?Facture $facture = null): array
     {
         $data = $request->validate([
             'type'                  => 'required|in:loyer,vente,construction,caution',
@@ -85,7 +92,45 @@ class FactureController extends Controller
         foreach (['location_id', 'vente_id', 'construction_id', 'etape_construction_id', 'date_echeance'] as $champ) {
             if (($data[$champ] ?? null) === '') $data[$champ] = null;
         }
+        $this->verifierMontant($data, $facture);
         return $data;
+    }
+
+    // Le montant doit rester cohérent avec l'opération facturée :
+    //  - vente : le total facturé ne dépasse pas le prix de vente ;
+    //  - caution : le total facturé ne dépasse pas la caution de la location ;
+    //  - construction : le total facturé ne dépasse pas le montant du chantier ;
+    //  - une facture ne descend pas sous ce qui a déjà été payé dessus.
+    private function verifierMontant(array $data, ?Facture $facture): void
+    {
+        $fcfa = fn ($n) => number_format((float) $n, 0, ',', ' ') . ' FCFA';
+        $montant = (float) $data['montant'];
+
+        if ($facture && $montant < $facture->totalPaye()) {
+            throw ValidationException::withMessages(['montant' =>
+                'Cette facture a déjà reçu ' . $fcfa($facture->totalPaye()) . ' de paiements : le montant ne peut pas être inférieur.']);
+        }
+
+        $plafond = null; $quoi = ''; $champ = null;
+        if ($data['type'] === 'vente' && $data['vente_id']) {
+            $plafond = Vente::find($data['vente_id'])?->prix_vente; $quoi = 'le prix de la vente'; $champ = 'vente_id';
+        } elseif ($data['type'] === 'caution' && $data['location_id']) {
+            $plafond = Location::find($data['location_id'])?->caution; $quoi = 'la caution de la location'; $champ = 'location_id';
+        } elseif ($data['type'] === 'construction' && $data['construction_id']) {
+            $plafond = Construction::find($data['construction_id'])?->montant_total; $quoi = 'le montant du chantier'; $champ = 'construction_id';
+        }
+        if ($plafond === null) return;
+
+        $dejaFacture = (float) Facture::where('type', $data['type'])->where($champ, $data[$champ])
+            ->when($facture, fn ($q) => $q->where('id', '!=', $facture->id))
+            ->sum('montant');
+        $reste = max(0, (float) $plafond - $dejaFacture);
+        if ($montant > $reste + 0.001) {
+            throw ValidationException::withMessages(['montant' =>
+                'Le montant dépasse ' . $quoi . ' (' . $fcfa($plafond) . ')' .
+                ($dejaFacture > 0 ? ', dont ' . $fcfa($dejaFacture) . ' déjà facturés' : '') .
+                '. Reste à facturer : ' . $fcfa($reste) . '.']);
+        }
     }
 
     // Numéro suivant à partir du dernier numéro de l'année.

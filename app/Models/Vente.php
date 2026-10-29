@@ -1,11 +1,12 @@
 <?php
 namespace App\Models;
+use App\Models\Concerns\Journalise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Vente extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Journalise;
     protected $fillable = ['prix_vente', 'date_vente', 'mode_paiement', 'statut', 'commission_agence', 'montant_reverse', 'client_id', 'bien_id', 'user_id'];
 
     public function client() { return $this->belongsTo(Client::class); }
@@ -15,4 +16,5 @@ class Vente extends Model
     public function factures() { return $this->hasMany(Facture::class); }
     public function commission() { return $this->hasOne(Commission::class); }
     public function demarchesAdministratives() { return $this->hasMany(DemarcheAdministrative::class); }
+    public function demarches() { return $this->hasMany(DemarcheAdministrative::class); }
 }

@@ -1,11 +1,12 @@
 <?php
 namespace App\Models;
+use App\Models\Concerns\Journalise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RendezVous extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Journalise;
     protected $table = 'rendez_vous';
     protected $fillable = ['date_heure', 'objet', 'statut', 'notes', 'lieu_rdv', 'user_id', 'client_id'];
 

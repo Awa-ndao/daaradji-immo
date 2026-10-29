@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\SuppressionProtegee;
 
 use App\Models\Construction;
 use App\Models\EtapeConstruction;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Concerns\PorteeAgent;
 
 class ConstructionController extends Controller
 {
+    use SuppressionProtegee;
     use PorteeAgent;
 
     public function index(Request $request)
@@ -196,6 +198,7 @@ class ConstructionController extends Controller
     public function destroy(Construction $construction)
     {
         $this->verifierAgent($construction);
+        if ($refus = $this->refusSuppression($construction, 'ce chantier', ['factures', 'contrat', 'demarches'])) return $refus;
         $construction->bien?->update(['statut' => $this->statutTerrainLibere($construction)]);
         $construction->etapes()->delete();
         $construction->delete();

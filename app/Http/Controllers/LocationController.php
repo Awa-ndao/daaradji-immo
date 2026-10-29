@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Concerns\SuppressionProtegee;
+
+use App\Services\CommissionService;
 
 use App\Models\Location;
 use App\Models\Bien;
@@ -9,6 +12,7 @@ use App\Http\Controllers\Concerns\PorteeAgent;
 
 class LocationController extends Controller
 {
+    use SuppressionProtegee;
     use PorteeAgent;
 
     public function index(Request $request)
@@ -67,6 +71,11 @@ class LocationController extends Controller
             ], 422);
         }
 
+        // Bien confié : il faut un mandat de location ou de gestion actif
+        if ($erreur = CommissionService::verifierMandat($bien, 'location')) {
+            return response()->json(['message' => $erreur], 422);
+        }
+
         $location = Location::create([
             'date_debut'    => $request->date_debut,
             'date_fin'      => null,
@@ -81,6 +90,9 @@ class LocationController extends Controller
         // Marquer le bien comme loué
         $bien->update(['statut' => 'loue']);
 
+        // Commission calculée automatiquement à partir du mandat (bien confié uniquement)
+        CommissionService::pourLocation($location);
+
         return response()->json($location->load(['client', 'bien', 'user']), 201);
     }
 
@@ -88,7 +100,7 @@ class LocationController extends Controller
     {
         $this->verifierAgent($location);
         return response()->json(
-            $location->load(['client', 'bien', 'user', 'contrat', 'factures'])
+            $location->load(['client', 'bien', 'user', 'contrat', 'factures', 'commission'])
         );
     }
 
@@ -102,6 +114,9 @@ class LocationController extends Controller
         $this->verifierAgent($location);
 
         $location->update($this->champsModifiables($request));
+        if ($location->wasChanged('loyer_mensuel')) {
+            CommissionService::pourLocation($location->fresh());
+        }
 
         // Si terminé → enregistrer date du jour + remettre bien disponible
         if ($request->statut === 'termine') {
@@ -117,6 +132,7 @@ class LocationController extends Controller
     public function destroy(Location $location)
     {
         $this->verifierAgent($location);
+        if ($refus = $this->refusSuppression($location, 'cette location', ['factures', 'contrat'])) return $refus;
         // Remettre le bien disponible
         $location->bien->update(['statut' => 'disponible']);
         $location->delete();

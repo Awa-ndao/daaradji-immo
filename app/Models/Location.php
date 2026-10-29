@@ -1,11 +1,12 @@
 <?php
 namespace App\Models;
+use App\Models\Concerns\Journalise;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Location extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, Journalise;
     protected $fillable = ['date_debut', 'date_fin', 'loyer_mensuel', 'caution', 'statut', 'date_renouvellement', 'motif_resiliation', 'client_id', 'bien_id', 'user_id'];
 
     public function client() { return $this->belongsTo(Client::class); }
@@ -13,4 +14,5 @@ class Location extends Model
     public function user() { return $this->belongsTo(User::class); }
     public function contrat() { return $this->hasOne(Contrat::class); }
     public function factures() { return $this->hasMany(Facture::class); }
+    public function commission() { return $this->hasOne(Commission::class); }
 }
