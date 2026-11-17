@@ -1,5 +1,5 @@
 # Image de production du backend DAARADJI IMMO (Laravel 12 + Apache), utilisée par Render
-FROM php:8.3-apache
+FROM php:8.2-apache
 
 # Extensions PHP nécessaires à Laravel et à MySQL
 RUN apt-get update \

@@ -35,6 +35,29 @@ class DashboardController extends Controller
                 ->latest()
                 ->take(5)
                 ->get(),
+            'clients_a_rappeler' => $this->clientsARappeler(),
         ]);
+    }
+
+    // Clients qui recherchaient un bien et pour qui un bien disponible correspond maintenant
+    // (pas pour la comptabilité, qui ne gère pas les clients)
+    private function clientsARappeler(): array
+    {
+        if (auth()->user()?->role === 'comptable') {
+            return [];
+        }
+        $liste = [];
+        foreach (Client::enRecherche()->orderBy('recherche_depuis')->get() as $c) {
+            $biens = $c->biensCorrespondants()->orderBy('prix')->limit(3)->get(['id', 'reference', 'type', 'localisation', 'prix']);
+            if ($biens->isNotEmpty()) {
+                $liste[] = [
+                    'client'   => $c->only(['id', 'prenom', 'nom', 'telephone', 'recherche_depuis']),
+                    'biens'    => $biens,
+                    'nb_biens' => $c->biensCorrespondants()->count(),
+                ];
+            }
+            if (count($liste) === 5) break;
+        }
+        return $liste;
     }
 }

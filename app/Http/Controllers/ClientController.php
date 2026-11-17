@@ -9,6 +9,21 @@ use Illuminate\Http\Request;
 class ClientController extends Controller
 {
     use SuppressionProtegee;
+
+    // Recherche en cours : le bien que le client attend (tous les champs sont facultatifs)
+    private const REGLES_RECHERCHE = [
+        'recherche_operation'      => 'nullable|in:achat,location',
+        'recherche_type'           => 'nullable|in:terrain,maison,villa,appartement,local_commercial',
+        'recherche_quartier'       => 'nullable|string|max:120',
+        'recherche_budget_max'     => 'nullable|numeric|min:0',
+        'recherche_superficie_min' => 'nullable|numeric|min:0',
+        'recherche_note'           => 'nullable|string|max:500',
+    ];
+    private const MESSAGES_RECHERCHE = [
+        'recherche_budget_max.numeric'     => 'Le budget doit être un nombre.',
+        'recherche_budget_max.min'         => 'Le budget ne peut pas être négatif.',
+        'recherche_superficie_min.min'     => 'La superficie ne peut pas être négative.',
+    ];
     public function index(Request $request)
     {
         $query = Client::query();
@@ -22,7 +37,16 @@ class ClientController extends Controller
             });
         }
 
-        return response()->json($query->latest()->paginate(10));
+        // « Clients qui recherchent un bien » : filtre de la liste
+        if ($request->recherche) {
+            $query->enRecherche();
+        }
+
+        $page = $query->latest()->paginate(10);
+        // Nombre de biens disponibles qui correspondent à la recherche du client
+        $page->getCollection()->each(fn (Client $c) =>
+            $c->setAttribute('nb_biens', $c->recherche_depuis ? $c->biensCorrespondants()->count() : 0));
+        return response()->json($page);
     }
 
     public function store(Request $request)
@@ -34,7 +58,7 @@ class ClientController extends Controller
             'email'        => 'nullable|email|unique:clients,email',
             'piece_identite' => 'nullable|in:CNI,Passeport,Permis',
             'numero_piece' => 'nullable|unique:clients,numero_piece',
-        ], [
+        ] + self::REGLES_RECHERCHE, [
             'nom.required'           => 'Le nom est obligatoire.',
             'prenom.required'        => 'Le prénom est obligatoire.',
             'telephone.required'     => 'Le téléphone est obligatoire.',
@@ -43,16 +67,18 @@ class ClientController extends Controller
             'email.email'            => 'L\'adresse email n\'est pas valide.',
             'piece_identite.in'      => 'La pièce d\'identité doit être CNI, Passeport ou Permis.',
             'numero_piece.unique'    => 'Ce numéro de pièce d\'identité est déjà enregistré.',
-        ]);
+        ] + self::MESSAGES_RECHERCHE);
 
-        $client = Client::create($request->all());
-        return response()->json($client, 201);
+        $client = Client::create($this->avecRecherche($request, $request->all()));
+        return response()->json($this->avecBiens($client), 201);
     }
 
     public function show(Client $client)
     {
         return response()->json(
             $client->load(['rendezVous', 'locations', 'ventes', 'constructions'])
+                ->setAttribute('biens_correspondants', $client->recherche_depuis
+                    ? $client->biensCorrespondants()->orderBy('prix')->limit(20)->get() : [])
         );
     }
 
@@ -65,7 +91,7 @@ class ClientController extends Controller
             'email'        => 'nullable|email|unique:clients,email,' . $client->id,
             'piece_identite' => 'nullable|in:CNI,Passeport,Permis',
             'numero_piece' => 'nullable|unique:clients,numero_piece,' . $client->id,
-        ], [
+        ] + self::REGLES_RECHERCHE, [
             'nom.required'        => 'Le nom est obligatoire.',
             'prenom.required'     => 'Le prénom est obligatoire.',
             'telephone.required'  => 'Le téléphone est obligatoire.',
@@ -74,10 +100,10 @@ class ClientController extends Controller
             'email.email'         => 'L\'adresse email n\'est pas valide.',
             'piece_identite.in'   => 'La pièce d\'identité doit être CNI, Passeport ou Permis.',
             'numero_piece.unique' => 'Ce numéro de pièce d\'identité est déjà enregistré.',
-        ]);
+        ] + self::MESSAGES_RECHERCHE);
 
-        $client->update($request->all());
-        return response()->json($client);
+        $client->update($this->avecRecherche($request, $request->all(), $client));
+        return response()->json($this->avecBiens($client));
     }
 
     public function destroy(Client $client)
@@ -85,6 +111,45 @@ class ClientController extends Controller
         if ($refus = $this->refusSuppression($client, 'ce client', ['ventes', 'locations', 'constructions', 'rendezVous'])) return $refus;
         $client->delete();
         return response()->json(['message' => 'Client supprimé avec succès']);
+    }
+
+    // Le client a trouvé son bien (ou ne cherche plus) : on efface sa recherche
+    public function terminerRecherche(Client $client)
+    {
+        $client->update(array_fill_keys(self::CHAMPS_RECHERCHE, null));
+        return response()->json(['message' => 'Recherche terminée pour ' . $client->prenom . ' ' . $client->nom . '.']);
+    }
+
+    private const CHAMPS_RECHERCHE = ['recherche_operation', 'recherche_type', 'recherche_quartier', 'recherche_budget_max',
+        'recherche_superficie_min', 'recherche_note', 'recherche_depuis'];
+
+    // Une recherche existe quand on a choisi achat ou location ; la date de début est gardée tant qu'elle dure
+    private function avecRecherche(Request $request, array $data, ?Client $client = null): array
+    {
+        unset($data['recherche_depuis'], $data['nb_biens']);
+        if (!$request->has('recherche_operation')) {
+            return $data; // formulaire sans la partie recherche : on n'y touche pas
+        }
+        if (empty($data['recherche_operation'])) {
+            foreach (self::CHAMPS_RECHERCHE as $champ) $data[$champ] = null;
+            return $data;
+        }
+        foreach (['recherche_type', 'recherche_quartier', 'recherche_budget_max', 'recherche_superficie_min', 'recherche_note'] as $champ) {
+            if (($data[$champ] ?? '') === '') $data[$champ] = null;
+        }
+        if (!$data['recherche_type'] && !trim((string) $data['recherche_quartier']) && !$data['recherche_budget_max'] && !$data['recherche_superficie_min']) {
+            abort(response()->json([
+                'message' => 'Recherche du client : renseignez au moins un critère (type de bien, quartier, budget ou superficie).',
+            ], 422));
+        }
+        $data['recherche_depuis'] = $client?->recherche_depuis?->toDateString() ?? now()->toDateString();
+        return $data;
+    }
+
+    private function avecBiens(Client $client): Client
+    {
+        $client->setAttribute('nb_biens', $client->recherche_depuis ? $client->biensCorrespondants()->count() : 0);
+        return $client;
     }
 
     public function search(Request $request)

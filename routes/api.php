@@ -32,7 +32,7 @@ use App\Http\Controllers\ImpressionController;
 |                    (il ne voit que SES dossiers : voir le trait PorteeAgent)
 |   comptable      : factures, paiements, commissions, salaires (+ lecture des opérations pour les relier)
 |   direction      : en plus, journal d'activité, corbeille (vider : propriétaire seulement)
-|   receptionniste : clients, rendez-vous
+|   receptionniste : clients (avec leur recherche de bien), rendez-vous
 |   tableau de bord : tout le monde
 */
 
@@ -57,6 +57,8 @@ Route::middleware('auth:api')->group(function () {
     // Clients (création, modification) et rendez-vous : direction, agents, réception
     Route::middleware('acces:proprietaire,administrateur,agent,receptionniste')->group(function () {
         Route::apiResource('/clients', ClientController::class)->only(['store', 'update', 'destroy']);
+        // Le client a trouvé son bien ou ne cherche plus : sa recherche est effacée
+        Route::delete('/clients/{client}/recherche', [ClientController::class, 'terminerRecherche']);
         Route::apiResource('/rendez-vous', RendezVousController::class)
             ->parameters(['rendez-vous' => 'rendezVous']);
     });

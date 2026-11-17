@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\SuppressionProtegee;
 
 use App\Models\Bien;
+use App\Models\Client;
 use Illuminate\Http\Request;
 
 class BienController extends Controller
@@ -59,7 +60,7 @@ class BienController extends Controller
         ]);
 
         $bien = Bien::create($this->donnees($request));
-        return response()->json($bien, 201);
+        return response()->json($this->avecDemandes($bien), 201);
     }
 
     public function show(Bien $bien)
@@ -92,7 +93,7 @@ class BienController extends Controller
         ]);
 
         $bien->update($this->donnees($request));
-        return response()->json($bien);
+        return response()->json($this->avecDemandes($bien));
     }
 
     public function destroy(Bien $bien)
@@ -100,6 +101,13 @@ class BienController extends Controller
         if ($refus = $this->refusSuppression($bien, 'ce bien', ['mandats', 'ventes', 'locations', 'constructions', 'achats'])) return $refus;
         $bien->delete();
         return response()->json(['message' => 'Bien supprimé avec succès']);
+    }
+
+    // Nombre de clients qui recherchent un bien comme celui-ci (affiché après l'enregistrement)
+    private function avecDemandes(Bien $bien): Bien
+    {
+        $bien->setAttribute('demandes_correspondantes', Client::pourBien($bien->fresh())->count());
+        return $bien;
     }
 
     // Un bien propre n'a pas de propriétaire tiers
