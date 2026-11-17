@@ -38,6 +38,10 @@
           aria-label="Rechercher un client" autocomplete="off"
           [(ngModel)]="searchTerm" name="searchTerm" (input)="onSearch()">
       </label>
+      <button type="button" class="chip chip--filtre" [class.chip--on]="filtreRecherche"
+        [attr.aria-pressed]="filtreRecherche" (click)="basculerFiltre()">
+        <i class="bi bi-search-heart"></i>Clients qui recherchent un bien
+      </button>
     </div>
 
     <!-- Tableau -->
@@ -48,6 +52,7 @@
             <tr>
               <th>Client</th>
               <th>Téléphone</th>
+              <th>Recherche un bien</th>
               <th>E-mail</th>
               <th>Adresse</th>
               <th>Pièce d'identité</th>
@@ -56,12 +61,13 @@
           </thead>
           <tbody>
             @if (!loaded) {
-              <tr><td colspan="6" class="empty">Chargement des clients…</td></tr>
+              <tr><td colspan="7" class="empty">Chargement des clients…</td></tr>
             } @else if (clients.length === 0) {
               <tr>
-                <td colspan="6" class="empty">
+                <td colspan="7" class="empty">
                   <i class="bi bi-people"></i>
-                  Aucun client ne correspond à cette recherche.
+                  @if (filtreRecherche && !searchTerm) { Aucun client ne recherche de bien en ce moment. }
+                  @else { Aucun client ne correspond à cette recherche. }
                 </td>
               </tr>
             }
@@ -74,6 +80,23 @@
                   </span>
                 </td>
                 <td class="tel"><i class="bi bi-telephone"></i> {{ c.telephone }}</td>
+                <td>
+                  @if (c.recherche_depuis) {
+                    <span class="rech">
+                      <b>{{ rechercheTitre(c) }}</b>
+                      <small>{{ rechercheDetail(c) }}</small>
+                      @if (c.nb_biens > 0) {
+                        <button type="button" class="match" (click)="ouvrirFiche(c)">
+                          <i class="bi bi-bell-fill"></i> {{ c.nb_biens }} bien{{ c.nb_biens > 1 ? 's' : '' }} — rappeler
+                        </button>
+                      } @else {
+                        <small class="rech__attente">Depuis le {{ c.recherche_depuis | date:'dd/MM/yyyy' }} · aucun bien pour l’instant</small>
+                      }
+                    </span>
+                  } @else {
+                    <span class="soft">—</span>
+                  }
+                </td>
                 <td class="soft">{{ c.email || '—' }}</td>
                 <td class="soft">
                   @if (c.adresse) { <i class="bi bi-geo-alt"></i> {{ c.adresse }} } @else { — }
@@ -91,6 +114,12 @@
                 </td>
                 <td>
                   <div class="acts">
+                    @if (c.recherche_depuis) {
+                      <button type="button" class="act" (click)="ouvrirFiche(c)"
+                        [attr.aria-label]="'Recherche de ' + c.prenom + ' ' + c.nom" title="Recherche et biens qui correspondent">
+                        <i class="bi bi-search-heart"></i>
+                      </button>
+                    }
                     <button type="button" class="act" (click)="editClient(c)"
                       [attr.aria-label]="'Modifier le client ' + c.nom + ' ' + c.prenom" title="Modifier">
                       <i class="bi bi-pencil"></i>
@@ -218,6 +247,58 @@
                 [(ngModel)]="form.numero_piece" name="numero_piece">
             </div>
           </div>
+
+          <!-- Recherche de bien : quand l'agence n'a pas encore ce que le client veut -->
+          <div class="full section-rech">
+            <span class="section-rech__titre"><i class="bi bi-search-heart"></i> Le client recherche un bien</span>
+            <span class="section-rech__aide">À remplir si l’agence n’a pas encore ce qu’il veut : il sera signalé dès qu’un bien correspondant sera ajouté.</span>
+          </div>
+          <div class="full">
+            <span class="lab" id="client-rech-op">Recherche</span>
+            <div class="chips" role="group" aria-labelledby="client-rech-op">
+              @for (o of operations; track o.value) {
+                <button type="button" class="chip" [class.chip--on]="form.recherche_operation === o.value"
+                  [attr.aria-pressed]="form.recherche_operation === o.value" (click)="choisirRecherche('recherche_operation', o.value)">
+                  <i class="bi" [ngClass]="o.icon"></i>{{ o.label }}
+                </button>
+              }
+            </div>
+          </div>
+          @if (form.recherche_operation) {
+            <div class="full">
+              <span class="lab" id="client-rech-type">Type de bien</span>
+              <div class="chips" role="group" aria-labelledby="client-rech-type">
+                @for (t of typesBien; track t.value) {
+                  <button type="button" class="chip" [class.chip--on]="form.recherche_type === t.value"
+                    [attr.aria-pressed]="form.recherche_type === t.value" (click)="choisirRecherche('recherche_type', t.value)">{{ t.label }}</button>
+                }
+              </div>
+            </div>
+            <div class="full">
+              <label class="lab" for="client-rech-quartier">Quartier ou ville souhaité</label>
+              <div class="inp"><i class="bi bi-geo-alt"></i>
+                <input id="client-rech-quartier" autocomplete="off" type="text" placeholder="Ex. : Saly, Malicounda, Mbour…"
+                  [(ngModel)]="form.recherche_quartier" name="recherche_quartier"></div>
+            </div>
+            <div>
+              <label class="lab" for="client-rech-budget">Budget maximum (FCFA)</label>
+              <div class="inp"><i class="bi bi-wallet2"></i>
+                <input id="client-rech-budget" type="number" min="0" placeholder="Ex. : 30000000"
+                  [(ngModel)]="form.recherche_budget_max" name="recherche_budget_max"></div>
+            </div>
+            <div>
+              <label class="lab" for="client-rech-sup">Superficie minimum (m²)</label>
+              <div class="inp"><i class="bi bi-arrows-angle-expand"></i>
+                <input id="client-rech-sup" type="number" min="0" placeholder="Ex. : 300"
+                  [(ngModel)]="form.recherche_superficie_min" name="recherche_superficie_min"></div>
+            </div>
+            <div class="full">
+              <label class="lab" for="client-rech-note">Précisions</label>
+              <div class="inp"><i class="bi bi-chat-left-text"></i>
+                <input id="client-rech-note" autocomplete="off" type="text" placeholder="Ex. : 3 chambres, près de la route nationale"
+                  [(ngModel)]="form.recherche_note" name="recherche_note"></div>
+            </div>
+          }
         </div>
 
         <div class="sheet__foot">
@@ -254,6 +335,57 @@
         <button type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="deleting">
           <i class="bi bi-trash3"></i> {{ deleting ? 'Suppression…' : 'Supprimer' }}
         </button>
+      </div>
+    </div>
+  </div>
+}
+<!-- Recherche du client : à rappeler, biens qui correspondent -->
+@if (fiche) {
+  <div class="veil" (click)="fermerFiche()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fiche-title" (click)="$event.stopPropagation()">
+      <div class="sheet__form">
+        <div class="sheet__head">
+          <div>
+            <h2 class="sheet__title" id="fiche-title">Recherche de {{ fiche.prenom }} {{ fiche.nom }}</h2>
+            <p class="sheet__sub">Depuis le {{ fiche.recherche_depuis | date:'dd/MM/yyyy' }}</p>
+          </div>
+          <button type="button" class="sheet__close" (click)="fermerFiche()" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="sheet__body">
+          @if (ficheError) { <div class="msg msg--err full" role="alert"><i class="bi bi-exclamation-circle"></i> {{ ficheError }}</div> }
+          <div class="contact full">
+            <span class="avatar">{{ initials(fiche) }}</span>
+            <span class="contact__nom"><b>{{ fiche.prenom }} {{ fiche.nom }}</b><small>{{ fiche.email || 'Pas d’e-mail' }}</small></span>
+            <a class="btn-main contact__tel" [href]="'tel:' + fiche.telephone"><i class="bi bi-telephone"></i> {{ fiche.telephone }}</a>
+          </div>
+          <div class="criteres full">
+            <span><i class="bi bi-search"></i> {{ rechercheTitre(fiche) }}</span>
+            <span><i class="bi bi-geo-alt"></i> {{ fiche.recherche_quartier || 'Tout quartier' }}</span>
+            <span><i class="bi bi-wallet2"></i> @if (fiche.recherche_budget_max) { {{ nombre(fiche.recherche_budget_max) }} FCFA max. } @else { Budget libre }</span>
+            @if (fiche.recherche_superficie_min) { <span><i class="bi bi-arrows-angle-expand"></i> {{ nombre(fiche.recherche_superficie_min) }} m² min.</span> }
+            @if (fiche.recherche_note) { <span class="criteres__note"><i class="bi bi-chat-left-text"></i> {{ fiche.recherche_note }}</span> }
+          </div>
+          <h3 class="bloc-titre full">Biens disponibles qui correspondent</h3>
+          @if (ficheLoading) {
+            <p class="soft full">Recherche des biens…</p>
+          } @else {
+            @for (b of fiche.biens_correspondants; track b.id) {
+              <div class="bien-trouve full">
+                <span class="bien-trouve__txt"><b>{{ b.reference }} — {{ typeLabel(b.type) }}</b>
+                  <small>{{ b.localisation }}@if (b.superficie) { · {{ nombre(b.superficie) }} m² }</small></span>
+                <span class="bien-trouve__prix">{{ nombre(b.prix) }} <small>FCFA</small></span>
+              </div>
+            } @empty {
+              <p class="vide full"><i class="bi bi-hourglass-split"></i> Aucun bien disponible ne correspond pour l’instant. Le client sera signalé sur le tableau de bord dès qu’un bien correspondant sera ajouté.</p>
+            }
+          }
+        </div>
+        <div class="sheet__foot">
+          <button type="button" class="btn-ghost" (click)="fermerFiche()">Fermer</button>
+          <button type="button" class="btn-main" (click)="terminerRecherche()" [disabled]="saving"
+            title="Le client a trouvé son bien ou ne cherche plus">
+            <i class="bi bi-check2"></i> {{ saving ? 'Enregistrement…' : 'Recherche terminée' }}</button>
+        </div>
       </div>
     </div>
   </div>

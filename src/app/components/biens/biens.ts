@@ -253,14 +253,14 @@ export class BiensComponent implements OnInit {
 
     if (this.editingId) {
       this.api.put('biens', this.editingId, this.form).subscribe({
-        next: () => {
+        next: (r: any) => {
           this.saving = false;
-          this.successMsg = 'Bien modifié avec succès.';
+          this.successMsg = 'Bien modifié avec succès.' + this.alerteDemandes(r);
           this.showForm = false;
           this.editingId = null;
           this.resetForm();
           this.loadBiens();
-          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 3000);
+          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, r?.demandes_correspondantes ? 9000 : 3000);
         },
         error: (err) => {
           this.saving = false;
@@ -270,13 +270,13 @@ export class BiensComponent implements OnInit {
       });
     } else {
       this.api.post('biens', this.form).subscribe({
-        next: () => {
+        next: (r: any) => {
           this.saving = false;
-          this.successMsg = 'Bien ajouté avec succès.';
+          this.successMsg = 'Bien ajouté avec succès.' + this.alerteDemandes(r);
           this.showForm = false;
           this.resetForm();
           this.loadBiens();
-          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 3000);
+          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, r?.demandes_correspondantes ? 9000 : 3000);
         },
         error: (err) => {
           this.saving = false;
@@ -371,5 +371,14 @@ export class BiensComponent implements OnInit {
       this.currentPage = page;
       this.loadBiens();
     }
+  }
+
+  // Après l'enregistrement : des clients recherchent-ils un bien comme celui-ci ?
+  alerteDemandes(r: any): string {
+    const n = Number(r?.demandes_correspondantes) || 0;
+    if (!n) return '';
+    return n === 1
+      ? ' Un client recherche un bien comme celui-ci : voyez la liste des clients pour le rappeler.'
+      : ` ${n} clients recherchent un bien comme celui-ci : voyez la liste des clients pour les rappeler.`;
   }
 }

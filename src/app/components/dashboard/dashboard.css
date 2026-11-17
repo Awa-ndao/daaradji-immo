@@ -211,3 +211,26 @@
   .panels { grid-template-columns: 1fr; }
   .banner-roof { display: none; }
 }
+/* Clients à rappeler (demandes des clients) */
+.rappel {
+  margin-bottom: 22px;
+  padding: 18px 22px;
+  border: 1px solid #F2CC5B;
+  border-left: 5px solid #D4A017;
+  border-radius: 14px;
+  background: #FFFBEF;
+}
+.rappel__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rappel__head .card-title { margin: 0; display: flex; align-items: center; gap: 8px; }
+.rappel__head .card-title i { color: #B8860B; }
+.rappel__sub { margin: 4px 0 8px; font-size: 13px; color: #5F6B64; }
+.rappel__all {
+  border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600;
+  color: #0F6B3A; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.rappel-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-bottom: 1px solid #F1E6C4;
+}
+.rappel-item:last-child { border-bottom: 0; }
+.rappel__tel { margin-left: 8px; font-weight: 500; color: #0B4D2A; }

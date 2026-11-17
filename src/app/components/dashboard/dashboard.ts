@@ -16,6 +16,8 @@ export class DashboardComponent implements OnInit {
   stats: any = {};
   activites: any[] = [];
   rdvAujourdhui: any[] = [];
+  // Clients qui attendaient un bien : un bien disponible correspond maintenant
+  aRappeler: any[] = [];
   user: any;
   prenom = '';
 
@@ -41,6 +43,7 @@ export class DashboardComponent implements OnInit {
         this.stats = data.stats || {};
         this.activites = data.activites_recentes || [];
         this.rdvAujourdhui = data.rdv_aujourd_hui || [];
+        this.aRappeler = data.clients_a_rappeler || [];
         // Rafraîchit l'écran dès que les chiffres arrivent du serveur
         this.cdr.detectChanges();
       },
@@ -49,6 +52,10 @@ export class DashboardComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  nombre(v: any): string {
+    return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   goTo(path: string): void {

@@ -50,6 +50,26 @@
       </button>
     </section>
 
+    <!-- Clients à rappeler : un bien disponible correspond à leur demande -->
+    <section class="rappel" *ngIf="aRappeler.length > 0">
+      <div class="rappel__head">
+        <h2 class="card-title"><i class="bi bi-bell-fill"></i> Clients à rappeler</h2>
+        <button type="button" class="rappel__all" (click)="goTo('/clients')">Voir les clients</button>
+      </div>
+      <p class="rappel__sub">Ces clients recherchaient un bien : un bien disponible correspond maintenant à leur recherche.</p>
+      <div *ngFor="let r of aRappeler" class="rappel-item">
+        <div class="activity-icon"><i class="bi bi-person"></i></div>
+        <div class="activity-main">
+          <div class="item-title">{{ r.client?.prenom }} {{ r.client?.nom }}
+            <span class="rappel__tel"><i class="bi bi-telephone"></i> {{ r.client?.telephone || '—' }}</span></div>
+          <div class="item-sub">Recherche depuis le {{ r.client?.recherche_depuis | date:'dd/MM/yyyy' }} —
+            <ng-container *ngFor="let b of r.biens; let last = last">{{ b.reference }} ({{ b.localisation }}, {{ nombre(b.prix) }} FCFA){{ last ? '' : ' · ' }}</ng-container>
+            <ng-container *ngIf="r.nb_biens > r.biens.length"> et {{ r.nb_biens - r.biens.length }} autre(s)</ng-container>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Activités + rendez-vous -->
     <section class="panels">
       <div class="content-card">

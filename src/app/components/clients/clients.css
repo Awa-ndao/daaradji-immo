@@ -627,3 +627,46 @@ button { font: inherit; }
   .sheet__body { grid-template-columns: 1fr; }
 
 }
+/* ---------- Recherche de bien du client ---------- */
+.chip--filtre { height: 44px; padding: 0 16px; white-space: nowrap; }
+.rech { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1.3; }
+.rech b { font-weight: 600; font-size: 13.5px; }
+.rech small { color: #6B756F; font-size: 12px; }
+.rech__attente { font-style: italic; }
+.match {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
+  padding: 4px 12px; border: 0; border-radius: 999px;
+  background: #FBE39A; color: #6E4F00; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.match:hover { background: #F2CC5B; }
+.match:focus-visible { outline: 2px solid #0B4D2A; outline-offset: 2px; }
+.match i { color: #B8860B; }
+
+.section-rech {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-top: 6px; padding-top: 14px; border-top: 1px dashed #DAD9D0;
+}
+.section-rech__titre { font-family: 'Outfit', 'Segoe UI', sans-serif; font-size: 15px; font-weight: 600; color: #0B4D2A; }
+.section-rech__titre i { color: #B8860B; }
+.section-rech__aide { font-size: 12.5px; color: #5F6B64; }
+
+.contact { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #E3E4DC; border-radius: 12px; background: #fff; }
+.contact__nom { flex: 1; display: flex; flex-direction: column; line-height: 1.3; }
+.contact__nom small { color: #6B756F; font-size: 12px; }
+.contact__tel { text-decoration: none; }
+.criteres { display: flex; flex-wrap: wrap; gap: 8px; }
+.criteres span {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  background: #E8F2EB; color: #0B4D2A; font-size: 13px; font-weight: 500;
+}
+.criteres .criteres__note { background: #FBF3DC; color: #6E4F00; }
+.bloc-titre { margin: 6px 0 0; font-family: 'Outfit', 'Segoe UI', sans-serif; font-size: 15px; font-weight: 600; color: #0B4D2A; }
+.bien-trouve {
+  display: flex; align-items: center; gap: 14px; padding: 10px 14px;
+  border-left: 4px solid #D4A017; border-radius: 10px; background: #F7F8F4;
+}
+.bien-trouve__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.bien-trouve__txt small { color: #6B756F; font-size: 12px; }
+.bien-trouve__prix { font-family: 'Outfit', 'Segoe UI', sans-serif; font-weight: 600; color: #0B4D2A; white-space: nowrap; }
+.bien-trouve__prix small { font-size: 11px; color: #5F6B64; }
+.vide { display: flex; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 10px; background: #FBF3DC; color: #6E4F00; font-size: 13px; }

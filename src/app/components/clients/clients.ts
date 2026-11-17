@@ -23,6 +23,24 @@ export class ClientsComponent implements OnInit {
   currentPage = 1;
   totalPages = 1;
   editingId: number | null = null;
+  // Recherche de bien : filtre « clients qui recherchent » et fiche des biens qui correspondent
+  filtreRecherche = false;
+  fiche: any = null;
+  ficheLoading = false;
+  ficheError = '';
+  operations = [
+    { value: '', label: 'Aucune', icon: 'bi-dash-circle' },
+    { value: 'achat', label: 'Achat', icon: 'bi-tag' },
+    { value: 'location', label: 'Location', icon: 'bi-key' }
+  ];
+  typesBien = [
+    { value: '', label: 'Peu importe' },
+    { value: 'terrain', label: 'Terrain' },
+    { value: 'maison', label: 'Maison' },
+    { value: 'villa', label: 'Villa' },
+    { value: 'appartement', label: 'Appartement' },
+    { value: 'local_commercial', label: 'Local commercial' }
+  ];
   clientToDelete: any = null;
   deleting = false;
   deleteError = '';
@@ -42,7 +60,13 @@ export class ClientsComponent implements OnInit {
     email: '',
     adresse: '',
     piece_identite: '',
-    numero_piece: ''
+    numero_piece: '',
+    recherche_operation: '',
+    recherche_type: '',
+    recherche_quartier: '',
+    recherche_budget_max: '',
+    recherche_superficie_min: '',
+    recherche_note: ''
   };
 
   private searchTimer: any;
@@ -72,6 +96,9 @@ export class ClientsComponent implements OnInit {
     if (this.searchTerm) {
       return `${n} ${n > 1 ? 'clients' : 'client'} pour cette recherche`;
     }
+    if (this.filtreRecherche) {
+      return `${n} ${n > 1 ? 'clients recherchent' : 'client recherche'} un bien`;
+    }
     return `${n} ${n > 1 ? 'clients enregistrés' : 'client enregistré'}`;
   }
 
@@ -95,6 +122,7 @@ export class ClientsComponent implements OnInit {
 
     const params: any = { page: this.currentPage };
     if (this.searchTerm) params.q = this.searchTerm;
+    if (this.filtreRecherche) params.recherche = 1;
 
     this.api.get('clients', params).subscribe({
       next: (data: any) => {
@@ -144,9 +172,81 @@ export class ClientsComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // ---------- Recherche de bien ----------
+
+  choisirRecherche(field: string, value: string): void {
+    this.form[field] = value;
+    this.cdr.detectChanges();
+  }
+
+  basculerFiltre(): void {
+    this.filtreRecherche = !this.filtreRecherche;
+    this.currentPage = 1;
+    this.loadClients();
+  }
+
+  nombre(v: any): string {
+    return String(Math.round(Number(v) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  typeLabel(v: string): string {
+    return this.typesBien.find(t => t.value === v)?.label || v;
+  }
+
+  rechercheTitre(c: any): string {
+    const op = c.recherche_operation === 'location' ? 'Location' : 'Achat';
+    return op + (c.recherche_type ? ' · ' + this.typeLabel(c.recherche_type).toLowerCase() : '');
+  }
+
+  rechercheDetail(c: any): string {
+    const parts = [c.recherche_quartier || 'Tout quartier'];
+    if (c.recherche_budget_max) parts.push(this.nombre(c.recherche_budget_max) + ' FCFA max.');
+    if (c.recherche_superficie_min) parts.push(this.nombre(c.recherche_superficie_min) + ' m² min.');
+    return parts.join(' · ');
+  }
+
+  ouvrirFiche(c: any): void {
+    this.fiche = { ...c, biens_correspondants: [] };
+    this.ficheLoading = true;
+    this.ficheError = '';
+    this.cdr.detectChanges();
+    this.api.get('clients/' + c.id).subscribe({
+      next: (r: any) => { this.fiche = r; this.ficheLoading = false; this.cdr.detectChanges(); },
+      error: () => { this.ficheLoading = false; this.ficheError = 'Impossible de charger la recherche du client.'; this.cdr.detectChanges(); }
+    });
+  }
+
+  fermerFiche(): void {
+    this.fiche = null;
+    this.ficheError = '';
+    this.cdr.detectChanges();
+  }
+
+  // Le client a trouvé son bien (ou ne cherche plus) : sa recherche est effacée
+  terminerRecherche(): void {
+    if (!this.fiche || this.saving) return;
+    this.saving = true;
+    this.api.delete('clients/' + this.fiche.id, 'recherche' as any).subscribe({
+      next: (r: any) => {
+        this.saving = false;
+        this.fiche = null;
+        this.successMsg = r?.message || 'Recherche terminée.';
+        this.loadClients();
+        setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 4000);
+      },
+      error: (err) => {
+        this.saving = false;
+        this.ficheError = err?.error?.message || 'Action impossible.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.clientToDelete) {
+    if (this.fiche) {
+      this.fermerFiche();
+    } else if (this.clientToDelete) {
       this.cancelDelete();
     } else if (this.showForm) {
       this.closeForm();
@@ -168,9 +268,9 @@ export class ClientsComponent implements OnInit {
 
     if (this.editingId) {
       this.api.put('clients', this.editingId, this.form).subscribe({
-        next: () => {
+        next: (r: any) => {
           this.saving = false;
-          this.successMsg = 'Client modifié avec succès.';
+          this.successMsg = 'Client modifié avec succès.' + this.messageBiens(r);
           this.showForm = false;
           this.editingId = null;
           this.resetForm();
@@ -185,9 +285,9 @@ export class ClientsComponent implements OnInit {
       });
     } else {
       this.api.post('clients', this.form).subscribe({
-        next: () => {
+        next: (r: any) => {
           this.saving = false;
-          this.successMsg = 'Client ajouté avec succès.';
+          this.successMsg = 'Client ajouté avec succès.' + this.messageBiens(r);
           this.showForm = false;
           this.resetForm();
           this.loadClients();
@@ -212,7 +312,13 @@ export class ClientsComponent implements OnInit {
       email: client.email || '',
       adresse: client.adresse || '',
       piece_identite: client.piece_identite || '',
-      numero_piece: client.numero_piece || ''
+      numero_piece: client.numero_piece || '',
+      recherche_operation: client.recherche_operation || '',
+      recherche_type: client.recherche_type || '',
+      recherche_quartier: client.recherche_quartier || '',
+      recherche_budget_max: client.recherche_budget_max ?? '',
+      recherche_superficie_min: client.recherche_superficie_min ?? '',
+      recherche_note: client.recherche_note || ''
     };
     this.showForm = true;
     this.cdr.detectChanges();
@@ -270,7 +376,13 @@ export class ClientsComponent implements OnInit {
       email: '',
       adresse: '',
       piece_identite: '',
-      numero_piece: ''
+      numero_piece: '',
+      recherche_operation: '',
+      recherche_type: '',
+      recherche_quartier: '',
+      recherche_budget_max: '',
+      recherche_superficie_min: '',
+      recherche_note: ''
     };
     this.editingId = null;
     this.errorMsg = '';
@@ -283,5 +395,12 @@ export class ClientsComponent implements OnInit {
       this.currentPage = page;
       this.loadClients();
     }
+  }
+
+  private messageBiens(r: any): string {
+    const n = Number(r?.nb_biens) || 0;
+    if (!r?.recherche_depuis) return '';
+    return n ? ` ${n} bien${n > 1 ? 's' : ''} disponible${n > 1 ? 's' : ''} correspond${n > 1 ? 'ent' : ''} déjà à sa recherche.`
+      : ' Il sera signalé dès qu’un bien correspondant sera ajouté.';
   }
 }
