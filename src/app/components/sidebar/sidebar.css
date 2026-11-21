@@ -98,6 +98,7 @@
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -110,8 +111,10 @@
   display: grid;
   place-items: center;
   width: 44px;
-  /* la hauteur s'adapte pour que tous les modules (jusqu’à 19) tiennent sans défilement */
-  height: clamp(24px, calc((100vh - 150px) / 19), 40px);
+  /* la hauteur s'adapte pour que les 19 modules ET la déconnexion tiennent dans l'écran
+     (100vh − barre du haut 60 − marges 24 − déconnexion 46, réparti sur 19 lignes) */
+  height: clamp(18px, calc((100vh - 130px) / 19 - 2px), 40px);
+  flex-shrink: 0;
   padding: 0;
   border: 0;
   border-radius: 10px;
@@ -181,6 +184,9 @@
 }
 
 .sidebar-footer {
+  flex-shrink: 0;
+  border-top: 1px solid #EEF0EA;
+  margin-top: 4px;
   display: flex;
   justify-content: center;
   width: 100%;

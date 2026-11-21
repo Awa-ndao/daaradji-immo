@@ -17,9 +17,11 @@
         <h1 class="page-title">Biens</h1>
         <p class="page-sub">{{ subtitle() }}</p>
       </div>
-      <button type="button" class="btn-gold" (click)="openNew()">
-        <i class="bi bi-plus-lg"></i> Ajouter un bien
-      </button>
+      @if (!lectureSeule) {
+        <button type="button" class="btn-gold" (click)="openNew()">
+          <i class="bi bi-plus-lg"></i> Ajouter un bien
+        </button>
+      }
     </div>
 
     <!-- Messages -->
@@ -94,7 +96,7 @@
               <th class="num">Prix</th>
               <th>Propriété</th>
               <th>Statut</th>
-              <th><span class="sr-only">Actions</span></th>
+              @if (!lectureSeule) { <th><span class="sr-only">Actions</span></th> }
             </tr>
           </thead>
           <tbody>
@@ -128,6 +130,7 @@
                   }
                 </td>
                 <td><span class="st" [ngClass]="'st--' + b.statut">{{ statutLabel(b.statut) }}</span></td>
+                @if (!lectureSeule) {
                 <td>
                   <div class="acts">
                     <button type="button" class="act" (click)="editBien(b)"
@@ -140,6 +143,7 @@
                     </button>
                   </div>
                 </td>
+                }
               </tr>
             }
           </tbody>

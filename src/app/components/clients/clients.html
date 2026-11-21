@@ -51,9 +51,8 @@
           <thead>
             <tr>
               <th>Client</th>
-              <th>Téléphone</th>
+              <th>Contact</th>
               <th>Recherche un bien</th>
-              <th>E-mail</th>
               <th>Adresse</th>
               <th>Pièce d'identité</th>
               <th><span class="sr-only">Actions</span></th>
@@ -61,10 +60,10 @@
           </thead>
           <tbody>
             @if (!loaded) {
-              <tr><td colspan="7" class="empty">Chargement des clients…</td></tr>
+              <tr><td colspan="6" class="empty">Chargement des clients…</td></tr>
             } @else if (clients.length === 0) {
               <tr>
-                <td colspan="7" class="empty">
+                <td colspan="6" class="empty">
                   <i class="bi bi-people"></i>
                   @if (filtreRecherche && !searchTerm) { Aucun client ne recherche de bien en ce moment. }
                   @else { Aucun client ne correspond à cette recherche. }
@@ -79,7 +78,12 @@
                     <span class="who__name">{{  c.prenom }} {{ c.nom  }}</span>
                   </span>
                 </td>
-                <td class="tel"><i class="bi bi-telephone"></i> {{ c.telephone }}</td>
+                <td>
+                  <span class="contact-cell">
+                    <span class="tel"><i class="bi bi-telephone"></i> {{ c.telephone }}</span>
+                    @if (c.email) { <small class="soft">{{ c.email }}</small> }
+                  </span>
+                </td>
                 <td>
                   @if (c.recherche_depuis) {
                     <span class="rech">
@@ -97,7 +101,6 @@
                     <span class="soft">—</span>
                   }
                 </td>
-                <td class="soft">{{ c.email || '—' }}</td>
                 <td class="soft">
                   @if (c.adresse) { <i class="bi bi-geo-alt"></i> {{ c.adresse }} } @else { — }
                 </td>

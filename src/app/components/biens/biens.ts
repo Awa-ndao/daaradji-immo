@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api';
 import { SidebarComponent } from '../sidebar/sidebar';
+import { AuthService } from '../../services/auth';
 
 @Component({
   selector: 'app-biens',
@@ -66,14 +67,19 @@ export class BiensComponent implements OnInit {
 
   private searchTimer: any;
 
+  // Réceptionniste : consultation seulement (pas d'ajout, de modification ni de suppression)
+  lectureSeule = false;
+
   constructor(
     private api: ApiService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private auth: AuthService
   ) {}
 
   ngOnInit(): void {
+    this.lectureSeule = this.auth.getRole() === 'receptionniste';
     this.loadBiens();
-    this.loadProprietaires();
+    if (!this.lectureSeule) this.loadProprietaires();
   }
 
   loadProprietaires(): void {

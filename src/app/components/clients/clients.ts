@@ -1,3 +1,4 @@
+import { timeout } from 'rxjs';
 import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -266,40 +267,39 @@ export class ClientsComponent implements OnInit {
     this.errorMsg = '';
     this.cdr.detectChanges();
 
-    if (this.editingId) {
-      this.api.put('clients', this.editingId, this.form).subscribe({
-        next: (r: any) => {
-          this.saving = false;
-          this.successMsg = 'Client modifié avec succès.' + this.messageBiens(r);
-          this.showForm = false;
-          this.editingId = null;
-          this.resetForm();
-          this.loadClients();
-          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 3000);
-        },
-        error: (err) => {
-          this.saving = false;
-          this.errorMsg = err.error?.message || 'Erreur lors de la modification';
-          this.cdr.detectChanges();
+    const modif = !!this.editingId;
+    const requete = modif ? this.api.put('clients', this.editingId!, this.form) : this.api.post('clients', this.form);
+
+    // 30 secondes maximum : le bouton ne doit jamais rester bloqué sur « Enregistrement… »
+    requete.pipe(timeout(30000)).subscribe({
+      next: (r: any) => {
+        let message = modif ? 'Client modifié avec succès.' : 'Client ajouté avec succès.';
+        try {
+          message += this.messageBiens(r);
+        } catch (e) {
+          console.error('Message de recherche', e);
         }
-      });
-    } else {
-      this.api.post('clients', this.form).subscribe({
-        next: (r: any) => {
-          this.saving = false;
-          this.successMsg = 'Client ajouté avec succès.' + this.messageBiens(r);
-          this.showForm = false;
-          this.resetForm();
-          this.loadClients();
-          setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 3000);
-        },
-        error: (err) => {
-          this.saving = false;
-          this.errorMsg = err.error?.message || 'Erreur lors de l\'ajout';
-          this.cdr.detectChanges();
+        this.saving = false;
+        this.showForm = false;
+        this.successMsg = message;
+        this.resetForm();
+        this.loadClients();
+        setTimeout(() => { this.successMsg = ''; this.cdr.detectChanges(); }, 4000);
+      },
+      error: (err: any) => {
+        console.error('Enregistrement du client', err);
+        this.saving = false;
+        const e = err?.error;
+        if (err?.name === 'TimeoutError') {
+          this.errorMsg = 'Le serveur ne répond pas. Vérifiez que le backend et MySQL sont démarrés, puis réessayez.';
+        } else if (e?.errors) {
+          this.errorMsg = (Object.values(e.errors)[0] as string[])[0];
+        } else {
+          this.errorMsg = e?.message || (modif ? 'Erreur lors de la modification' : 'Erreur lors de l\'ajout');
         }
-      });
-    }
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   editClient(client: any): void {

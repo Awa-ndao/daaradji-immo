@@ -6,7 +6,8 @@ const DIRECTION: Role[] = ['proprietaire', 'administrateur'];
 
 export const ACCES: Record<string, Role[]> = {
   dashboard: TOUS,
-  biens: [...DIRECTION, 'agent'],
+  // La réceptionniste consulte les biens (lecture seule) pour renseigner les visiteurs
+  biens: [...DIRECTION, 'agent', 'receptionniste'],
   achats: [...DIRECTION, 'agent'],
   clients: [...DIRECTION, 'agent', 'receptionniste'],
   ventes: [...DIRECTION, 'agent'],

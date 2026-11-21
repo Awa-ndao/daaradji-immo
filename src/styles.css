@@ -12,12 +12,15 @@ body {
   background-color: #f2f4f7;
 }
 /* Barre de défilement de la page : fine, discrète, aux couleurs de l'agence */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #C9CCC4 transparent;
-}
-
+/* Chrome / Edge : barre fine et arrondie, sans flèches */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #C9CCC4; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: #0F6B3A; }
+::-webkit-scrollbar-thumb { background: #CFD3CA; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #0F6B3A; background-clip: padding-box; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox (qui ne connaît pas ::-webkit-scrollbar) */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: #CFD3CA transparent; }
+}

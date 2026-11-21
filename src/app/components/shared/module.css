@@ -976,10 +976,7 @@ button { font: inherit; }
 .agent:hover > i { display: inline; }
 
 /* Sur petit écran, s'il faut quand même défiler : barre fine aux couleurs de l'agence */
-.table-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #C9CCC4 transparent;
-}
+.table-scroll::-webkit-scrollbar { height: 6px; }
 .table-scroll::-webkit-scrollbar { height: 6px; }
 .table-scroll::-webkit-scrollbar-track { background: transparent; }
 .table-scroll::-webkit-scrollbar-thumb { background: #C9CCC4; border-radius: 999px; }
